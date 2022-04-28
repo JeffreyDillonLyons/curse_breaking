@@ -226,8 +226,8 @@ def solver(P, O, rule, sparse, growth, ID):
 
 def wrapper():
 
-    orders = [1]
-    levels = [1]
+    orders = [1,2,3,4,5,6]
+    levels = [1,2,3,4,5,6,7]
 
     for order in orders:
 
