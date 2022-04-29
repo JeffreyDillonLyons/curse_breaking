@@ -16,6 +16,7 @@ from ema_workbench.connectors.vensim import (
     be_quiet,
     vensimDLLwrapper,
 )
+from ema_workbench import ema_logging
 
 # This is the script where my own sensitivity indices functions are kept
 import sensitivity
@@ -77,7 +78,11 @@ def solver(model, results_file, joint_distribution, P, O, rule, sparse,
     # global evals, abscissas, model_evals, weights
 
     # Initialise
+    # FIXME why does loading a vensim model changes the current working directory?
+    cwd = os.getcwd()
     load_model(model)
+    os.chdir(cwd)
+
     be_quiet()
 
     # Generate raw PCE of order 'P' which is normalised.
@@ -119,14 +124,16 @@ def solver(model, results_file, joint_distribution, P, O, rule, sparse,
             set_value(name, parameter)
 
         # run simulation
-        run_simulation(model)
+        run_simulation(results_file)
 
         try:
-            model_eval = float(get_data(results_file, "fraction renewables")[-1])
-            evals[tuple(node)] = model_eval
-            dick[tuple(node)] = model_eval
+            model_eval = get_data(results_file, "fraction renewables")
         except IndexError:
-            pass
+            raise IndexError
+        else:
+            result = float(model_eval[-1])
+            evals[tuple(node)] = result
+            dick[tuple(node)] = result
 
     # Reform nodes/weights/evals column vectors >>> fit expansion
     abscissas = np.array(list(evals.keys())).T
@@ -137,12 +144,14 @@ def solver(model, results_file, joint_distribution, P, O, rule, sparse,
         expansion, abscissas, weights, model_evals, retall=1
     )
 
-    poly_path = f"./data/polynomials/{ID}_poly_{O}_{P}_{today}.npz"
-    uhat_path = f"./data/polynomials/{ID}_uhat_{O}_{P}_{today}.npz"
-    index_path = f"./data/indices/{ID}_sobol_{O}_{P}_{today}.csv"
+    poly_path = os.path.abspath(f"./data/polynomials_{ID}_poly_{O}_{P}_{today}.npz")
+    uhat_path = os.path.abspath(f"./data/polynomials_{ID}_uhat_{O}_{P}_{today}.npz")
+    index_path = os.path.abspath(f"./data/indices_{ID}_sobol_{O}_{P}_{today}.csv")
 
-    numpoly.savez(poly_path, polynomial)
-    np.savez(uhat_path, uhat)
+    with open(poly_path, 'wb') as fh:
+        numpoly.savez(fh, polynomial)
+    with open(uhat_path, 'wb') as fh:
+        numpoly.savez(fh, uhat)
 
     run_time = time.perf_counter() - start_time
     no_samples = len(weights)
@@ -189,6 +198,7 @@ def wrapper():
 
 
 if __name__ == "__main__":
+    ema_logging.log_to_stderr(ema_logging.INFO)
 
     # Here are the five parameters which I have chosen for the first sensitivity campaign.
     names = [
@@ -213,7 +223,7 @@ if __name__ == "__main__":
     # dictionary to in model evaluations will be stored with format > { tuple('node'): str(model_eval) }
     model = os.path.abspath(
         "./models/RB_V25_ets_1_policy_modified_adaptive_extended_outcomes.vpm")
-    results_file = os.path.abspath("./models/Current.vdf")
+    results_file = os.path.abspath("./models/Current.vdfx")
 
 
     returns = solver(model, results_file, joint_distribution, 1, 1, rule="g",
