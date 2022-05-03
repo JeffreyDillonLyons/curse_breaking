@@ -185,7 +185,7 @@ def wrapper():
     # This function just loops over the given polynomial expansion orders
     # and quadrature orders and calls solver for each. Code may be
     # parallised here, with each 'job' i.e solver(order,level etc...) sent
-    # to a different cluster for evaluation.
+    # to a different core for evaluation.
 
     orders = [1, 2, 3, 4, 5, 6]
     levels = [1, 2, 3, 4, 5, 6, 7]
