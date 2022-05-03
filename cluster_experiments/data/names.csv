@@ -1,0 +1,47 @@
+,names,bounds,names,bounds
+0,SWITCH Market price determination,"[1.0, 2.0]",progress ratio biomass,"[0.85, 1.0]"
+1,SWITCH TGC obligation curve,"[1.0, 2.0]",progress ratio coal,"[0.9, 1.05]"
+2,SWITCH carbon cap,"[1.0, 2.0]",progress ratio gas,"[0.85, 1.0]"
+3,SWITCH carbon price determination,"[1.0, 2.0]",progress ratio hydro,"[0.9, 1.05]"
+4,SWITCH economic growth,"[1.0, 2.0]",progress ratio igcc,"[0.9, 1.05]"
+5,SWITCH electrification rate,"[1.0, 2.0]",progress ratio ngcc,"[0.85, 1.0]"
+6,SWITCH interconnection capacity expansion,"[1.0, 2.0]",progress ratio nuclear,"[0.9, 1.05]"
+7,SWITCH lookup curve TGC,"[1.0, 2.0]",progress ratio pv,"[0.75, 0.9]"
+8,SWITCH low reserve margin price markup,"[1.0, 2.0]",progress ratio wind,"[0.85, 1.0]"
+9,SWITCH physical limits,"[1.0, 2.0]",economic lifetime biomass,"[30.0, 50.0]"
+10,SWITCH storage for intermittent supply,"[1.0, 2.0]",economic lifetime coal,"[30.0, 50.0]"
+11,SWTICH preference carbon curve,"[1.0, 2.0]",economic lifetime gas,"[25.0, 40.0]"
+12,demand fuel price elasticity factor,"[0.0, 0.5]",economic lifetime hydro,"[50.0, 70.0]"
+13,economic lifetime biomass,"[30.0, 50.0]",economic lifetime igcc,"[30.0, 50.0]"
+14,economic lifetime coal,"[30.0, 50.0]",economic lifetime ngcc,"[25.0, 40.0]"
+15,economic lifetime gas,"[25.0, 40.0]",economic lifetime nuclear,"[50.0, 70.0]"
+16,economic lifetime hydro,"[50.0, 70.0]",economic lifetime pv,"[20.0, 30.0]"
+17,economic lifetime igcc,"[30.0, 50.0]",economic lifetime wind,"[20.0, 30.0]"
+18,economic lifetime ngcc,"[25.0, 40.0]",,
+19,economic lifetime nuclear,"[50.0, 70.0]",,
+20,economic lifetime pv,"[20.0, 30.0]",,
+21,economic lifetime wind,"[20.0, 30.0]",,
+22,investment proportionality constant,"[0.5, 4.0]",,
+23,investors desired excess capacity investment,"[0.2, 2.0]",,
+24,maximum battery storage uncertainty constant,"[0.2, 3.0]",,
+25,maximum no storage penetration rate pv,"[0.1, 0.4]",,
+26,maximum no storage penetration rate wind,"[0.2, 0.6]",,
+27,price demand elasticity factor,"[-0.07, -0.001]",,
+28,price volatility global resource markets,"[0.1, 0.2]",,
+29,progress ratio biomass,"[0.85, 1.0]",,
+30,progress ratio coal,"[0.9, 1.05]",,
+31,progress ratio gas,"[0.85, 1.0]",,
+32,progress ratio hydro,"[0.9, 1.05]",,
+33,progress ratio igcc,"[0.9, 1.05]",,
+34,progress ratio ngcc,"[0.85, 1.0]",,
+35,progress ratio nuclear,"[0.9, 1.05]",,
+36,progress ratio pv,"[0.75, 0.9]",,
+37,progress ratio wind,"[0.85, 1.0]",,
+38,starting construction time,"[0.1, 3.0]",,
+39,time of nuclear power plant ban,"[2013.0, 2100.0]",,
+40,uncertainty initial gross fuel costs,"[0.5, 1.5]",,
+41,weight factor carbon abatement,"[1.0, 10.0]",,
+42,weight factor marginal investment costs,"[1.0, 10.0]",,
+43,weight factor technological familiarity,"[1.0, 10.0]",,
+44,weight factor technological growth potential,"[1.0, 10.0]",,
+45,year,"[0.9, 1.1]",,

@@ -200,13 +200,28 @@ def wrapper():
 if __name__ == "__main__":
     ema_logging.log_to_stderr(ema_logging.INFO)
 
-    # Here are the five parameters which I have chosen for the first sensitivity campaign.
+    '''
+    Here are all the parameters I have chosen, there are 17 in total here. As discussed, the first three campaings will be with 5,10,15 variables.  
+    '''
     names = [
-        "progress ratio biomass",
-        "progress ratio coal",
-        "progress ratio nuclear",
-        "progress ratio pv",
-        "progress ratio wind",
+        'progress ratio biomass'
+        'progress ratio coal'
+        'progress ratio hydro'
+        'progress ratio igcc'
+        'progress ratio ngcc'
+        'progress ratio nuclear'
+        'progress ratio pv'
+        'progress ratio wind'
+        'economic lifetime biomass'
+        'economic lifetime coal'
+        'economic lifetime gas'
+        'economic lifetime hydro'
+        'economic lifetime igcc'
+        'economic lifetime ngcc'
+        'economic lifetime nuclear'
+        'economic lifetime pv'
+        'economic lifetime wind'
+
     ]
 
     # Here we load the parameter value bounds from .json to a dictionary.
