@@ -15,8 +15,10 @@ from ema_workbench.connectors.vensim import (
     get_data,
     be_quiet,
     vensimDLLwrapper,
+    VensimModel
 )
-from ema_workbench import ema_logging
+from ema_workbench import ema_logging, MultiprocessingEvaluator, RealParameter, \
+    Samplers, ScalarOutcome, Scenario
 
 # This is the script where my own sensitivity indices functions are kept
 import sensitivity
@@ -60,6 +62,103 @@ import sensitivity
 
 # Main experiment
 
+def return_last(x):
+    return x[-1]
+
+def setup_vensimmodel(model_file, working_directory, parameter_names, bounds):
+    """
+
+    Parameters
+    ----------
+    model_file
+    working_directory
+    parameter_names
+    bounds
+
+    Returns
+    -------
+
+    """
+    model = VensimModel('vensimmodel', wd=working_directory, model_file=model_file)
+
+    uncertainties = []
+    for name, bound in zip(parameter_names, bounds):
+        lower, upper = bound
+        uncertainty = RealParameter(name, lower, upper)
+        uncertainties.append(uncertainty)
+    model.uncertainties = uncertainties
+
+    model.outcomes = [ScalarOutcome("fraction renewables", function=return_last)]
+
+    return model
+
+
+def run_sobol(model_file, working_directory, parameter_names, bounds, resolution):
+    """
+
+    Parameters
+    ----------
+    model_file
+    working_directory
+    parameter_names
+    bounds
+    resolution
+
+    Returns
+    -------
+
+    """
+    model = setup_vensimmodel(model_file, working_directory, parameter_names, bounds)
+
+    with MultiprocessingEvaluator(model) as evaluator:
+        results = evaluator.perform_experiments(resolution, uncertainty_sampling=Samplers.SOBOL)
+
+    return results
+
+
+def run_chaospy(model_file, working_directory, parameter_names, bounds,
+                P, O, rule="g", sparse=False, growth=False, ID="gfg"):
+    model = setup_vensimmodel(model_file, working_directory, parameter_names, bounds)
+
+    distributions = [ch.Uniform(bound[0], bound[1]) for bound in bounds]
+    joint_distribution = ch.J(*distributions)
+
+    expansion = ch.generate_expansion(P, joint_distribution, normed=True)
+
+    # Generate quadrature rule and weights of order 'O' from joint pdf.
+    nodes, weights = ch.generate_quadrature(
+        O, joint_distribution, rule=rule, sparse=sparse, growth=growth
+    )
+
+    evals = {}
+    weight_d = {}
+    transport = []
+    dick = {}
+
+    # Check dictionary for existing node/eval pairs
+    for idx, node in enumerate(nodes.T):
+        weight_d[tuple(node)] = weights[idx]
+
+        if tuple(node) in dick.keys():
+            evals[tuple(node)] = dick[tuple[node]]
+        else:
+            # if node is not key, append to transport for later evaluation
+            transport.append(node)
+
+    # Evaluate model for nodes in transport
+    # This is where the model evaluations are happening so this is where the
+    # code could be parallelised if needed. For reference - on single
+    # thread of inteli3 evaluation takes o.4 seconds. The most expensive job
+    # is a seventh orders quadrature rule which requires 32,768 evaluations
+    # = 273 minutes.
+
+    scenarios = [Scenario(name=None, **{k:v for k,v in zip(names, node)}) for node in
+                 transport]
+
+    with MultiprocessingEvaluator(model) as evaluator:
+        results = evaluator.perform_experiments(scenarios)
+
+    retirm results
 
 
 def solver(model, results_file, joint_distribution, P, O, rule, sparse,
@@ -217,15 +316,22 @@ if __name__ == "__main__":
     # Here we instantiate the chaospy joint distribution by multiplying the
     # five uniform distributions together.
     bounds = [var_settings[name] for name in names]
-    distributions = [ch.Uniform(bound[0], bound[1]) for bound in bounds]
-    joint_distribution = ch.J(*distributions)
 
-    # dictionary to in model evaluations will be stored with format > { tuple('node'): str(model_eval) }
-    model = os.path.abspath(
-        "./models/RB_V25_ets_1_policy_modified_adaptive_extended_outcomes.vpm")
-    results_file = os.path.abspath("./models/Current.vdfx")
+    model_filename =  "RB_V25_ets_1_policy_modified_adaptive_extended_outcomes.vpm"
+    working_directory = "./models"
 
+    # results = run_sobol(model_filename, working_directory, names, bounds, 10)
+    run_chaospy(model_filename, working_directory, names, bounds, 1, 1,)
 
-    returns = solver(model, results_file, joint_distribution, 1, 1, rule="g",
-           sparse=False, growth=False, ID="gfg")
-    print(returns)
+    # distributions = [ch.Uniform(bound[0], bound[1]) for bound in bounds]
+    # joint_distribution = ch.J(*distributions)
+    #
+    # # dictionary to in model evaluations will be stored with format > { tuple('node'): str(model_eval) }
+    # model = os.path.abspath(
+    #     "./models/RB_V25_ets_1_policy_modified_adaptive_extended_outcomes.vpm")
+    # results_file = os.path.abspath("./models/Current.vdfx")
+    #
+    #
+    # returns = solver(model, results_file, joint_distribution, 1, 1, rule="g",
+    #        sparse=False, growth=False, ID="gfg")
+    # print(returns)
