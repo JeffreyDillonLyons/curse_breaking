@@ -158,7 +158,7 @@ def run_chaospy(model_file, working_directory, parameter_names, bounds,
     with MultiprocessingEvaluator(model) as evaluator:
         results = evaluator.perform_experiments(scenarios)
 
-    retirm results
+    return results
 
 
 def solver(model, results_file, joint_distribution, P, O, rule, sparse,
