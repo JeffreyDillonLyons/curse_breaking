@@ -139,16 +139,17 @@ def get_model_evals(model_file, working_directory, parameter_names, sparse, max_
     else:
         grid = 'gaussian'
         
-    current_names = names[0:dimension]
+    current_names = parameter_names[0:dimension]
         
     with open("./data/variable_settings.json") as f:
         var_settings = json.loads(f.read())
 
     bounds = [var_settings[name] for name in current_names]
 
-    model = setup_vensimmodel(model_file, working_directory, names, bounds)
+    model = setup_vensimmodel(model_file, working_directory, current_names, bounds)
     
     distributions = [ch.Uniform(bound[0], bound[1]) for bound in bounds]
+    
     joint_distribution = ch.J(*distributions)
     
     nodes = np.zeros((0,dimension), dtype = 'float')
@@ -158,7 +159,7 @@ def get_model_evals(model_file, working_directory, parameter_names, sparse, max_
     for level in range(1, max_order + 1):
         n,w = ch.generate_quadrature(level, joint_distribution, sparse=sparse, rule='g', growth=False) 
         nodes = np.concatenate((nodes,n.T), axis=0)
-            
+   
     scenarios = [Scenario(name='Jeff', **{k:v for k,v in zip(current_names, node)}) for node in \
                  nodes]
 
@@ -445,7 +446,8 @@ if __name__ == "__main__":
     model_filename =  "RB_V25_ets_1_policy_modified_adaptive_extended_outcomes.vpm"
     working_directory = "./models"
     
-    get_model_evals(model_filename, working_directory, parameter_names,sparse=False, max_order=10, dimension=5)
+    get_model_evals(model_filename, working_directory, parameter_names,sparse=False, max_order=10, dimension=4)
+    get_model_evals(model_filename, working_directory, parameter_names,sparse=True, max_order=10, dimension=4)
     
     '''
     NOTE: We will start with 5 dimensions. Resolution of 2048 = 24,576 experiments ~ roughly what we agreed.
