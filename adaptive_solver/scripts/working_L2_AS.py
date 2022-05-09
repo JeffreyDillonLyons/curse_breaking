@@ -15,6 +15,7 @@ from itertools import product
 from collections import OrderedDict
 import re
 import os
+import matplotlib.pyplot as plt
 
 
 def c(s):
@@ -22,7 +23,13 @@ def c(s):
     return os.getcwd()
 ''''''
 
+'''
+ Notes
+-------------------------
+TODO > Remove indices in active that are in old before assigning errors > affects first step since 1111 already in old. 
 
+
+'''
 
 
 x0 = 33                         # Initial conditions same as before
@@ -57,8 +64,7 @@ gamma = ch.Uniform(0.0226, 0.0354)
 joint = ch.J(alpha,beta,delta,gamma) #The input paramter distributions are assumed to be independent so we may easily construct the joint input probability distribution.
 
 
-
-gt_prey = pd.read_csv('../data/indices_328000_GT.csv').ST
+gt_prey = pd.read_csv('../data/new_gt_indices_328000.csv',index_col=['type','params']).loc['pred','ST']
 gt_norm = np.linalg.norm(gt_prey)
 
 
@@ -159,6 +165,10 @@ def generate_candidates(index_set, P):
             temp.append(candidate)
 
     candidates = temp
+    
+    for candidate in candidates:
+        if candidate in old:
+            candidates.remove(candidate)
 
 #     temp = []
 #     maxx = sum(np.max(np.array(old), axis=0))
@@ -169,7 +179,6 @@ def generate_candidates(index_set, P):
 #             temp.append(candidate)
 
 #     candidates = temp
-
     return candidates
 
 def sobol_error(vec):
@@ -208,9 +217,7 @@ def solver(old_set,target):
 
     polly, uhat = ch.fit_regression(expansion,nodes_list, evals_list, retall = 1)
     poly.append(polly)
-    print('Solver_time >>>', time.perf_counter() - solver_time)
-    print('Weight sum >>>', sum(weights_list))
-#     print(len(uhat))
+    # print('Solver_time >>>', time.perf_counter() - solver_time)
     return len(weights_list), uhat
 
 
@@ -218,12 +225,15 @@ def assign_errors(active_set):
     global active_errors, active, candidates, current_errors, new
     active_errors = []
     
+    if np.any(active_set in old):
+        print('oops')
+    
 #     maxx = sum(np.max(np.array(old), axis=0))
 
 #     for multi_index in active_set:
 #         if (step > 0) and sum(np.max(np.array(old + [multi_index]), axis=0)) <= maxx:
 #             active_set.remove(multi_index)
-        
+   
 
     for multi_index in active_set:
         nodes, _ = build_nodes_weights(multi_index)
@@ -247,13 +257,19 @@ def assign_errors(active_set):
         active_errors.append(np.mean(current_errors))
 
     active = sorted(list(zip(active_set, active_errors)), key=lambda x: x[1])
+    for i in active:
+        if step > 1:
+            if i[0] in old:
+                active.remove(i)
+       
 
+    # print(active)
     return active
     # active = [i for i in OrderedDict((tuple(x[0]), x) for x in active).values()]if np.isnan(poly[-1](1,2,3,4)):
 
-def algorithm(P,species):
+def algorithm(P,species,TOL, merge):
     
-    global dick, old, candidates, poly, active, global_errors, no_nodes,step,expansion
+    global dick, old, candidates, poly, active, global_errors, no_nodes,step,expansion,means,uhats
     
     '''Initialise'''
     
@@ -275,9 +291,11 @@ def algorithm(P,species):
     old = [(1,1,1,1)]
     active = []
     poly = []
+    uhats = []
     
     local_errors = []
     global_errors = []
+    means = []
     
     names = ['alpha','beta','delta','gamma']
     
@@ -290,11 +308,14 @@ def algorithm(P,species):
     
     trivial = [seed]
     number_nodes,uhat = solver(old,target)
+    uhats.append(uhat)
     assign_errors(old)
     
     
     st = sense_t(uhat,exponents)
     s1 = sense_main(uhat,exponents)
+    means.append(uhat[0])
+    # print(uhat[0])
     
     global_errors.append(sobol_error(st))
     
@@ -305,7 +326,7 @@ def algorithm(P,species):
 
     '''Main loop'''
     
-    while (global_errors[-1] > 0.2 or np.isnan(global_errors[-1])) and len(active)>0:
+    while (global_errors[-1] > TOL or np.isnan(global_errors[-1])) and len(active)>0:
         
         start_time = time.perf_counter()
         
@@ -319,6 +340,7 @@ def algorithm(P,species):
         print('Chosen index >>>', chosen_index)
         
         number_nodes,uhat = solver(old,target)
+        uhats.append(uhat)
         
         candidates = generate_candidates(chosen_index,P)
         stripped_active = [i[0] for i in active] + [j for j in candidates]
@@ -328,8 +350,11 @@ def algorithm(P,species):
 
         st = sense_t(uhat,exponents)
         s1 = sense_main(uhat,exponents)
+        means.append(uhat[0])
+        print(uhat[0])
+
         
-        print('Sobol time >>>', time.perf_counter() - sobol_time)
+        # print('Sobol time >>>', time.perf_counter() - sobol_time)
         
         global_errors.append(sobol_error(st))
 
@@ -339,6 +364,7 @@ def algorithm(P,species):
         run_time = time.perf_counter() - start_time
         
         numpoly.savez(f'../data/lotka2/{species}/poly_{P}+{date_today}.npz',*poly)
+        np.savez(f'../data/lotka2/{species}/uhat_{P}+{date_today}.npz',*uhats)
         
         df_indices = df_indices.append({'alpha': st[0], 'beta': st[1], 'delta': st[2], 'gamma': st[3]          }, ignore_index=True)
         df_indices_s1 = df_indices_s1.append({'alpha': s1[0], 'beta': s1[1], 'delta': s1[2], 'gamma': s1[3]          }, ignore_index=True)
@@ -360,8 +386,79 @@ def algorithm(P,species):
     print(f'GT_alpha:{gt_prey[0].round(10)}, GT_beta:{gt_prey[1].round(10)}, GT_delta:{gt_prey[2].round(10)}, GT_gamma:{gt_prey[3].round(10)}')
     print(f'The final grid contains {number_nodes} nodes.')
     print(f'The total run time was {df.run_time.sum()}seconds, not bad!')
-          
+    
+    if merge:
+    
+        merged_set = merge_sets(old,active)
+        
+        number_nodes,uhat = solver(merged_set, target)
+            
+        st = sense_t(uhat,exponents)
+        s1 = sense_main(uhat,exponents)
+        
+        print('-'*10,'MERGED','-'*10)
+        print(f'ST_alpha:{st[0].round(10)}, ST_beta:{st[1].round(10)}, ST_delta:{st[2].round(10)}, ST_gamma:{st[3].round(10)}')
+        print(f'GT_alpha:{gt_prey[0].round(10)}, GT_beta:{gt_prey[1].round(10)}, GT_delta:{gt_prey[2].round(10)}, GT_gamma:{gt_prey[3].round(10)}')
+        
+        global_errors.append(sobol_error(st))
 
+        print('Global error >>>', global_errors[-1])
+            
+        '''Save data'''
+        run_time = time.perf_counter() - start_time
+            
+        numpoly.savez(f'../data/lotka2/{species}/poly_{P}+{date_today}.npz',*poly)
+            
+        df_indices = df_indices.append({'alpha': st[0], 'beta': st[1], 'delta': st[2], 'gamma': st[3]          }, ignore_index=True)
+        df_indices_s1 = df_indices_s1.append({'alpha': s1[0], 'beta': s1[1], 'delta': s1[2], 'gamma': s1[3]          }, ignore_index=True)
+        df = df.append({'chosen_index': chosen_index,'local_error':local_errors[-1],                               'global_error':global_errors[-1],'no_nodes':number_nodes, 'run_time':run_time}, ignore_index=True)
+            
+        df.to_csv(f'../data/lotka2/{species}/run_file_{P}+{date_today}.csv')
+        df_indices.to_csv(f'../data/lotka2/{species}/total_order_indices_{P}+{date_today}.csv')
+        df_indices_s1.to_csv(f'../data/lotka2/{species}/first_order_indices_{P}+{date_today}.csv')
+        
+    print(old)
+         
+def merge_sets(old_set,active):
+
+    stripped_active = [i[0] for i in active]
+    merged = old + stripped_active
+    
+    return merged
+    
+def plot_stat_convergence(means):
+       
+        K = len(means)
+        if K < 2:
+            print('Means from at least two refinements are required')
+            return
+        else:
+            differ_mean = np.zeros(K - 1)
+            differ_std = np.zeros(K - 1)
+            for i in range(1, K):
+                differ_mean[i - 1] = means[i] - means[i - 1]
+                                                    
+                # make relative
+                differ_mean[i - 1] = differ_mean[i - 1] / means[i - 1]
+                                                                         
+
+                # differ_std[i - 1] = np.linalg.norm(self.std_history[i] -
+                                                   # self.std_history[i - 1], np.inf)
+                # # make relative
+                # differ_std[i - 1] = differ_std[i - 1] / np.linalg.norm(self.std_history[i - 1],
+                                                                       # np.inf)
+
+        import matplotlib.pyplot as plt
+        fig = plt.figure('stat_conv')
+        ax1 = fig.add_subplot(111, title='moment convergence')
+        ax1.set_xlabel('iteration', fontsize=12)
+        # ax1.set_ylabel(r'$ ||\mathrm{mean}_i - \mathrm{mean}_{i - 1}||_\infty$',
+        # color='r', fontsize=12)
+        ax1.set_ylabel(r'relative error mean', color='r', fontsize=12)
+        ax1.plot(range(2, K + 1), differ_mean, color='r', marker='+')
+        ax1.tick_params(axis='y', labelcolor='r')
+        plt.show()
+       
 def combinator(current_index):
     
     coeff = 1
@@ -449,10 +546,9 @@ def sense_t(uhat,exponents):
     st = st / variance
     
     return st
-    
-    
-        
-algorithm(3,'prey')
+         
+algorithm(6,'predator',0.05, merge=True)
+
 
 
 
