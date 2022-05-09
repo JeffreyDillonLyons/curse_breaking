@@ -1,39 +1,33 @@
 
-
 '''Preamble'''
 
 import numpy as np
-import matplotlib.pyplot as plt
 import chaospy as ch
 from scipy import integrate
 import pandas as pd
-from mpl_toolkits import mplot3d
 import time
 import json
-import pickle
-from IPython.display import Image
 import pandas as pd
 import datetime
 import numpoly
 from itertools import product
 from collections import OrderedDict
-from os import PathLike
 import re
 import os
+import matplotlib.pyplot as plt
 
-##SALib
-from SALib.sample import saltelli
-from SALib.analyze import sobol
-from SALib.test_functions import Ishigami
-
-#Chaospy
-import chaospy as ch
 
 def c(s):
     os.chdir(s)
     return os.getcwd()
+    
 
-''''''
+
+'''
+ Notes
+-------------------------
+TODO: 16:42 09/05/2022 > Check that addition of saving to dick in assign_errors doesn't blow things up.
+''' 
 
 x0 = 0.5
 y0 = 1
@@ -41,7 +35,7 @@ z0 = 2
 X = (x0,y0,z0)
 t = np.linspace(0,30,1000)
 
-problem = { ## These are the values for which we have truly crazy multimodal owl populations
+problem = {
     'num_vars': 7,
     'names': ['alpha','beta','delta','gamma','e','f','h'],
     'bounds': [[0.44,0.68],
@@ -52,24 +46,25 @@ problem = { ## These are the values for which we have truly crazy multimodal owl
                [0.71,1.15],
                [0.02,0.03]]}
 
-def lotka3(X,t,a,b,d,g,e,f,h):
-    x, y, z = X
+def lotka(X,t,a,b,d,g,e,f,h):
+    x, y, z = 0.5,1,2
     dotx = x * (a - b * y)
     doty = y * (-d + (g * x) - e * z) 
     dotz = z * (-f + h*y)
     return np.array([dotx, doty, dotz])
 
-distributions = []
 
-for idx,name in enumerate(problem['names']):
-    a,b = problem['bounds'][idx]
-    distributions.append(ch.Uniform(a,b))
+distributions = [ ch.Uniform(a,b) for a,b in problem['bounds'] ]    
+
     
 joint = ch.J(*distributions)
 
 dick = {}
 
 vectors = np.identity(len(joint), dtype='int')
+
+gt = pd.read_csv('./data/gt_L3.csv',index_col=['type','params']).loc['mouse','ST']
+gt_norm = np.linalg.norm(gt)
 
 growth=False
 recurrence_algorithm='stieltjes'
@@ -114,7 +109,6 @@ def _construct_lookup(
             w_lookup[-1].append(weights)
     return x_lookup, w_lookup
 
-
 def construct_wrapper(maxx):
     global max_order_vector, max_order
     global x_lookup, w_lookup
@@ -136,7 +130,6 @@ def construct_wrapper(maxx):
     return x_lookup, w_lookup
 
 x_lookup, w_lookup = construct_wrapper(10)
-
 
 def generate_candidates(index_set, P):
     global candidates, pre_candidates, back_neighbours
@@ -160,28 +153,31 @@ def generate_candidates(index_set, P):
     temp = []
     for candidate in candidates:
         # if candidate not in old:
-        if np.all(np.array(candidate) <= P) and np.linalg.norm(np.array(candidate),ord=1) <= (P+3):
+        if np.all(np.array(candidate) <= P) and np.linalg.norm(np.array(candidate),ord=1) <= (P+6):
             temp.append(candidate)
 
     candidates = temp
-
-    temp = []
-    maxx = sum(np.max(np.array(old), axis=0))
-
+    
     for candidate in candidates:
+        if candidate in old:
+            candidates.remove(candidate)
 
-        if sum(np.max(np.array(old + [candidate]), axis=0)) > maxx:
-            temp.append(candidate)
+    # temp = []
+    # maxx = sum(np.max(np.array(old), axis=0))
 
-    candidates = temp
+    # for candidate in candidates:
+
+        # if sum(np.max(np.array(old + [candidate]), axis=0)) > maxx:
+            # temp.append(candidate)
+
+    # candidates = temp
 
     return candidates
 
 def sobol_error(vec):
-    return np.linalg.norm(gt_prey - vec) / gt_norm
+    return np.linalg.norm(gt - vec) / gt_norm
 
-
-def solver(old_set,target):
+def solver(old_set,target,expansion):
 
     global poly
 
@@ -193,7 +189,7 @@ def solver(old_set,target):
 
     for index in old_set:
         nodes, weights = build_nodes_weights(index)
-        weights = [weight * combinator(index) for weight in weights]
+        weights = [weight * combinator(index,vectors) for weight in weights]
 
         nodes_list += nodes
         weights_list += weights
@@ -204,29 +200,32 @@ def solver(old_set,target):
             evals_list.append(dick[node])
 
         else:
-            a, b, d, g = node
-            solution = integrate.odeint(lotka, X, t, args=(a, b, d, g)).T[target][910]
+            a, b, d, g, e, f, h = node
+            solution = integrate.odeint(lotka, X, t, args=(a, b, d, g, e, f, h)).T[target][910]
             evals_list.append(solution)
             dick[node] = solution
 
     nodes_list = np.array(nodes_list).T
 
-    polly = ch.fit_quadrature(expansion, nodes_list, weights_list, evals_list)
+    polly, uhat = ch.fit_regression(expansion, nodes_list, evals_list, retall = 1)
     poly.append(polly)
-    print('Solver_time >>>', time.perf_counter() - solver_time)
-    print('Weight sum >>>', sum(weights_list))
-    return len(weights_list)
+    # print('Solver_time >>>', time.perf_counter() - solver_time)
+    # print('Weight sum >>>', sum(weights_list))
+    return len(weights_list), uhat
 
-
-def assign_errors(active_set):
+def assign_errors(active_set,target):
     global active_errors, active, candidates, current_errors, new
+    
     active_errors = []
     
-    maxx = sum(np.max(np.array(old), axis=0))
+    if np.any(active_set in old):
+        print('oops')
     
-    for multi_index in active_set:
-        if (step > 0) and sum(np.max(np.array(old + [multi_index]), axis=0)) <= maxx:
-            active_set.remove(multi_index)
+    # maxx = sum(np.max(np.array(old), axis=0))
+    
+    # for multi_index in active_set:
+        # if (step > 0) and sum(np.max(np.array(old + [multi_index]), axis=0)) <= maxx:
+            # active_set.remove(multi_index)
         
 
     for multi_index in active_set:
@@ -234,70 +233,81 @@ def assign_errors(active_set):
         current_errors = []
 
         for node in nodes:
-            a, b, d, g = node
-            if np.isnan(poly[-1](a, b, d, g)):
+            a, b, d, g, e, f, h = node
+            if np.isnan(poly[-1](a, b, d, g, e, f, h)):
                 poly_eval = 0
             else:
-                poly_eval = poly[-1](a, b, d, g)
+                poly_eval = poly[-1](a, b, d, g, e, f, h)
 
             if node in dick.keys():
-                a, b, d, g = node
+                # a, b, d, g = node
                 current_errors.append(abs(dick[node] - poly_eval))
 
             else:
-                solution = integrate.odeint(lotka, (33, 6.2), t, args=(a, b, d, g)).T[0][910]
+                solution = integrate.odeint(lotka, X, t, args=(a, b, d, g ,e ,f ,h )).T[target][910]
                 current_errors.append(abs(solution - poly_eval))
+                dick[node] = solution
 
         active_errors.append(np.mean(current_errors))
 
     active = sorted(list(zip(active_set, active_errors)), key=lambda x: x[1])
+    for i in active:
+        if step > 1:
+            if i[0] in old:
+                active.remove(i)
 
     return active
-    # active = [i for i in OrderedDict((tuple(x[0]), x) for x in active).values()]if np.isnan(poly[-1](1,2,3,4)):
-
-def algorithm(P,species):
+  
+def algorithm(P, species, TOL, merge):
     
     global dick, old, candidates, poly, active, global_errors, no_nodes,step
     
     '''Initialise'''
     
-    if species == 'prey':
+    if species == 'mouse':
         target = 0
         
-    elif species == 'predator':
+    elif species == 'snake':
         target = 1
+      
+    elif species == 'owl':
+        target = -1
     
-    seed = (2,2,1,2)
-    expansion = ch.generate_expansion(P, joint)
+    # seed = (2,2,1,2)
+    expansion = ch.generate_expansion(P, joint, normed = True)
+    exponents = ch.lead_exponent(expansion, graded=True)
     vectors = np.identity(len(joint), dtype='int')
     date_today = datetime.date.today()
     start_time = time.perf_counter()
     
     step = 0
     
-    old = [(1,1,1,1)]
+    old = [tuple(np.ones(len(joint),dtype='int'))]
     active = []
     poly = []
+    uhats = []
     
     local_errors = []
     global_errors = []
+    means = []
     
-    names = ['alpha','beta','delta','gamma']
+    names = ['alpha','beta','delta','gamma','e','f','h']
     
     df = pd.DataFrame(columns=['chosen_index','local_error','global_error','no_nodes','run_time'])
-    df_indices = pd.DataFrame(columns=['alpha','beta','delta','gamma'])
-    df_indices_s1 = pd.DataFrame(columns=['alpha','beta','delta','gamma'])
+    df_indices = pd.DataFrame(columns=names,dtype=object)
+    df_indices_s1 = pd.DataFrame(columns=names,dtype=object)
 
     
     '''Execute zeroth step'''
     
-    trivial = [seed]
-    solver(old,target)
-    assign_errors(old)
+    # trivial = [seed]
+    number_nodes,uhat = solver(old,target,expansion)
+    uhats.append(uhat)
+    assign_errors(old,target)
     
-    
-    st = ch.Sens_t(poly[-1], joint)
-    s1 = ch.Sens_m(poly[-1], joint)
+    st = sense_t(uhat,exponents,expansion)
+    s1 = sense_main(uhat,exponents,expansion)
+    means.append(uhat[0])
     
     global_errors.append(sobol_error(st))
     
@@ -308,11 +318,11 @@ def algorithm(P,species):
 
     '''Main loop'''
     
-    while (global_errors[-1] > 0.1 or np.isnan(global_errors[-1])) and len(active)>0:
+    while (global_errors[-1] > TOL or np.isnan(global_errors[-1])) and len(active)>0:
         
         start_time = time.perf_counter()
         
-        print('Active >>>',active)
+        # print('Active >>>',active)
         chosen_index = active[-1][0]
         local_errors.append(active[-1][1])
         active.pop()
@@ -321,19 +331,20 @@ def algorithm(P,species):
         
         print('Chosen index >>>', chosen_index)
         
-        number_nodes = solver(old,target)
+        number_nodes,uhat = solver(old,target,expansion)
+        uhats.append(uhat)
         
         candidates = generate_candidates(chosen_index,P)
-        print(candidates)
         stripped_active = [i[0] for i in active] + [j for j in candidates]
-        active = assign_errors(stripped_active)
+        active = assign_errors(stripped_active,target)
         
         sobol_time = time.perf_counter() 
 
-        st = ch.Sens_t(poly[-1], joint)
-        s1 = ch.Sens_m(poly[-1], joint)
+        st = sense_t(uhat,exponents,expansion)
+        s1 = sense_main(uhat,exponents,expansion)
+        means.append(uhat[0])
         
-        print('Sobol time >>>', time.perf_counter() - sobol_time)
+        # print('Sobol time >>>', time.perf_counter() - sobol_time)
         
         global_errors.append(sobol_error(st))
 
@@ -342,15 +353,16 @@ def algorithm(P,species):
         '''Save data'''
         run_time = time.perf_counter() - start_time
         
-        numpoly.savez(f'./data/lotka2/{species}/poly_{P}+{date_today}.npz',*poly)
+        numpoly.savez(f'../data/lotka3/{species}/poly_{P}+{date_today}.npz',*poly)
+        np.savez(f'../data/lotka3/{species}/uhat_{P}+{date_today}.npz',*uhats)
         
-        df_indices = df_indices.append({'alpha': st[0], 'beta': st[1], 'delta': st[2], 'gamma': st[3]          }, ignore_index=True)
-        df_indices_s1 = df_indices_s1.append({'alpha': s1[0], 'beta': s1[1], 'delta': s1[2], 'gamma': s1[3]          }, ignore_index=True)
+        df_indices = df_indices.append({'alpha': st[0], 'beta': st[1], 'delta': st[2], 'gamma': st[3], 'e': st[4], 'f':st[5],'h':st[6]}, ignore_index=True)
+        df_indices_s1 = df_indices_s1.append({'alpha': st[0], 'beta': st[1], 'delta': st[2], 'gamma': st[3], 'e': st[4], 'f':st[5],'h':st[6]}, ignore_index=True)
         df = df.append({'chosen_index': chosen_index,'local_error':local_errors[-1],                               'global_error':global_errors[-1],'no_nodes':number_nodes, 'run_time':run_time}, ignore_index=True)
         
-        df.to_csv(f'./data/lotka2/{species}/run_file_{P}+{date_today}.csv')
-        df_indices.to_csv(f'./data/lotka2/{species}/total_order_indices_{P}+{date_today}.csv')
-        df_indices_s1.to_csv(f'./data/lotka2/{species}/first_order_indices_{P}+{date_today}.csv')
+        df.to_csv(f'../data/lotka3/{species}/run_file_{P}+{date_today}.csv')
+        df_indices.to_csv(f'../data/lotka3/{species}/total_order_indices_{P}+{date_today}.csv')
+        df_indices_s1.to_csv(f'../data/lotka3/{species}/first_order_indices_{P}+{date_today}.csv')
 
         print('Step time >>>', time.perf_counter() - start_time, 'seconds')
         print('-'*10,'break','-'*10)
@@ -360,13 +372,55 @@ def algorithm(P,species):
     print('Congratulations, the algorithm has converged!')
     print('Here are the results...')
     print('-'*20)
-    print(f'ST_alpha:{st[0].round(4)}, ST_beta:{st[1].round(4)}, ST_delta:{st[2].round(4)}, ST_gamma:{st[3].round(4)}')
-    print(f'GT_alpha:{gt_prey[0].round(4)}, GT_beta:{gt_prey[1].round(4)}, GT_delta:{gt_prey[2].round(4)}, GT_gamma:{gt_prey[3].round(4)}')
+    print(f'ST_alpha:{st[0].round(4)}, ST_beta:{st[1].round(4)}, ST_delta:{st[2].round(4)},\
+            ST_gamma:{st[3].round(4)}, ST_e:{st[4].round(4)}, ST_f:{st[5].round(4)}, ST_h:{st[6].round(4)}')                                    
+              
+    print(f'GT_alpha:{gt[0].round(4)}, GT_beta:{gt[1].round(4)}, GT_delta:{gt[2].round(4)}, GT_gamma:{gt[3].round(4)}, GT_e:{gt[4].round(4)}, GT_f:{gt[5].round(4)}, GT_h:{gt[6].round(4)} ')
     print(f'The final grid contains {number_nodes} nodes.')
     print(f'The total run time was {df.run_time.sum()}seconds, not bad!')
-          
+    
+    if merge:
+    
+        merged_set = merge_sets(old,active)
+        
+        number_nodes,uhat = solver(merged_set, target, expansion)
+            
+        st = sense_t(uhat,exponents,expansion)
+        s1 = sense_main(uhat,exponents,expansion)
+        
+        print('-'*10,'MERGED','-'*10)
+        print(f'ST_alpha:{st[0].round(4)}, ST_beta:{st[1].round(4)}, ST_delta:{st[2].round(4)},\
+            ST_gamma:{st[3].round(4)}, ST_e:{st[4].round(4)}, ST_f:{st[5].round(4)}, ST_h:{st[6].round(4)}')                                    
+              
+        print(f'GT_alpha:{gt[0].round(4)}, GT_beta:{gt[1].round(4)}, GT_delta:{gt[2].round(4)}, GT_gamma:{gt[3].round(4)}, GT_e:{gt[4].round(4)}, GT_f:{gt[5].round(4)}, GT_h:{gt[6].round(4)} ')
+        
+        global_errors.append(sobol_error(st))
 
-def combinator(current_index):
+        print('Global error >>>', global_errors[-1])
+            
+        '''Save data'''
+        run_time = time.perf_counter() - start_time
+     
+        numpoly.savez(f'../data/lotka3/{species}/poly_{P}+{date_today}.npz',*poly)
+        
+        np.savez(f'../data/lotka3/{species}/uhat_{P}+{date_today}.npz',*uhats)
+        
+        df_indices = df_indices.append({'alpha': st[0], 'beta': st[1], 'delta': st[2], 'gamma': st[3], 'e': st[4], 'f':st[5],'h':st[6]}, ignore_index=True)
+        df_indices_s1 = df_indices_s1.append({'alpha': st[0], 'beta': st[1], 'delta': st[2], 'gamma': st[3], 'e': st[4], 'f':st[5],'h':st[6]}, ignore_index=True)
+        df = df.append({'chosen_index': chosen_index,'local_error':local_errors[-1],                               'global_error':global_errors[-1],'no_nodes':number_nodes, 'run_time':run_time}, ignore_index=True)
+        
+        df.to_csv(f'../data/lotka3/{species}/run_file_{P}+{date_today}.csv')
+        df_indices.to_csv(f'../data/lotka3/{species}/total_order_indices_{P}+{date_today}.csv')
+        df_indices_s1.to_csv(f'../data/lotka3/{species}/first_order_indices_{P}+{date_today}.csv')
+        
+def merge_sets(old_set,active):
+
+    stripped_active = [i[0] for i in active]
+    merged = old + stripped_active
+    
+    return merged 
+
+def combinator(current_index,vectors):
     coeff = 1
     
     for vector in vectors:
@@ -388,45 +442,59 @@ def build_nodes_weights(current_index):
         nodestack.append([])
         nodestack[index] = list(x_lookup[index][element])
         
-    nodes = nodestack[0]
-    
-    for i in range(1,len(nodestack)):
-        nodes = product(nodes,nodestack[i])
+    nodes = product(*nodestack)
         
-    nodes = [(a,b,c,d) for (((a,b),c),d) in nodes]
-    
     '''Weights'''
     
     for index,element in enumerate(current_index):
         weightstack.append([])
         weightstack[index] = list(w_lookup[index][element])
-        
-    weights = weightstack[0]
-    
-    for i in range(1,len(weightstack)):
-        weights = product(weights,weightstack[i])
-        
-    weights = [(a*b*c*d) for (((a,b),c),d) in weights]
-    
-    
+
+    weights = product(*weightstack)
+
     return nodes,weights
         
-def wrapper():
+def sense_main(uhat,exponents,expansion):
+
+    dim = len(joint)
+    s1 = np.zeros(dim)
     
-    orders = [1,2,4,5,6]
-    o = [1,2,3,4,5,6]
+    variance = np.sum(np.array(uhat[1:])**2)
     
-    for order in orders:
-        algorithm(order,species='prey')
+    for variable,name in enumerate(expansion.names):
+        mask = np.ones(dim)
+        mask[variable] = False
         
-    for order in o:
-        algorithm(order,species='predator')
+        for idx,exponent in enumerate(exponents):
+            if exponent[variable] > 0 and np.all(exponent*mask == 0):
+                s1[variable] += uhat[idx]**2
+                
+    s1 = s1 / variance
+    
+    return s1        
 
-print(xlook_up)
+def sense_t(uhat,exponents,expansion):
 
+    dim = len(joint)
+    st = np.zeros(dim)
+    
+    variance = np.sum(np.array(uhat[1:])**2)
+    
+    for variable,name in enumerate(expansion.names):
 
+        mask = np.ones(dim)
+        mask[variable] = False
+        
+        for idx,exponent in enumerate(exponents):
+            if exponent[variable] > 0 and np.all(exponent*mask == 0):
+                st[variable] += uhat[idx]**2
+                
+            if exponent[variable] > 0 and np.any(exponent*mask != 0):
+                st[variable] += uhat[idx]**2
+                
+    st = st / variance
+    
+    return st
 
-
-
-
+algorithm(3,'mouse',0.2, merge=True)
 

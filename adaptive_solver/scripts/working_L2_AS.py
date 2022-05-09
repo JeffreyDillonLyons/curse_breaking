@@ -27,6 +27,7 @@ def c(s):
  Notes
 -------------------------
 TODO > Remove indices in active that are in old before assigning errors > affects first step since 1111 already in old. 
+TODO 16:42 09/05/2022 > Check that addition of saving to dick in assign_errors doesn't blow things up.
 
 
 '''
@@ -138,7 +139,6 @@ def construct_wrapper(maxx):
 
 x_lookup, w_lookup = construct_wrapper(10)
 
-
 def generate_candidates(index_set, P):
     global candidates, pre_candidates, back_neighbours
 
@@ -184,7 +184,6 @@ def generate_candidates(index_set, P):
 def sobol_error(vec):
     return np.linalg.norm(gt_prey - vec) / gt_norm
 
-
 def solver(old_set,target):
 
     global poly
@@ -220,9 +219,9 @@ def solver(old_set,target):
     # print('Solver_time >>>', time.perf_counter() - solver_time)
     return len(weights_list), uhat
 
-
-def assign_errors(active_set):
-    global active_errors, active, candidates, current_errors, new
+def assign_errors(active_set,target):
+    global active_errors, active, candidates, current_errors,new
+    
     active_errors = []
     
     if np.any(active_set in old):
@@ -251,8 +250,9 @@ def assign_errors(active_set):
                 current_errors.append(abs(dick[node] - poly_eval))
 
             else:
-                solution = integrate.odeint(lotka, (33, 6.2), t, args=(a, b, d, g)).T[0][910]
+                solution = integrate.odeint(lotka, (33, 6.2), t, args=(a, b, d, g)).T[target][910]
                 current_errors.append(abs(solution - poly_eval))
+                dick[node] = solution
 
         active_errors.append(np.mean(current_errors))
 
@@ -265,8 +265,7 @@ def assign_errors(active_set):
 
     # print(active)
     return active
-    # active = [i for i in OrderedDict((tuple(x[0]), x) for x in active).values()]if np.isnan(poly[-1](1,2,3,4)):
-
+   
 def algorithm(P,species,TOL, merge):
     
     global dick, old, candidates, poly, active, global_errors, no_nodes,step,expansion,means,uhats
@@ -279,7 +278,7 @@ def algorithm(P,species,TOL, merge):
     elif species == 'predator':
         target = 1
     
-    seed = (2,2,1,2)
+    # seed = (2,2,1,2)
     expansion = ch.generate_expansion(P, joint, normed = True)
     exponents = ch.lead_exponent(expansion, graded=True)
     vectors = np.identity(len(joint), dtype='int')
@@ -300,22 +299,20 @@ def algorithm(P,species,TOL, merge):
     names = ['alpha','beta','delta','gamma']
     
     df = pd.DataFrame(columns=['chosen_index','local_error','global_error','no_nodes','run_time'],dtype=object)
-    df_indices = pd.DataFrame(columns=['alpha','beta','delta','gamma'],dtype=object)
-    df_indices_s1 = pd.DataFrame(columns=['alpha','beta','delta','gamma'],dtype=object)
+    df_indices = pd.DataFrame(columns=names,dtype=object)
+    df_indices_s1 = pd.DataFrame(columns=names,dtype=object)
 
     
     '''Execute zeroth step'''
     
-    trivial = [seed]
+    # trivial = [seed]
     number_nodes,uhat = solver(old,target)
     uhats.append(uhat)
-    assign_errors(old)
-    
+    assign_errors(old,target)
     
     st = sense_t(uhat,exponents)
     s1 = sense_main(uhat,exponents)
     means.append(uhat[0])
-    # print(uhat[0])
     
     global_errors.append(sobol_error(st))
     
@@ -344,16 +341,14 @@ def algorithm(P,species,TOL, merge):
         
         candidates = generate_candidates(chosen_index,P)
         stripped_active = [i[0] for i in active] + [j for j in candidates]
-        active = assign_errors(stripped_active)
+        active = assign_errors(stripped_active,target)
         
         sobol_time = time.perf_counter() 
 
         st = sense_t(uhat,exponents)
         s1 = sense_main(uhat,exponents)
         means.append(uhat[0])
-        print(uhat[0])
 
-        
         # print('Sobol time >>>', time.perf_counter() - sobol_time)
         
         global_errors.append(sobol_error(st))
@@ -408,6 +403,8 @@ def algorithm(P,species,TOL, merge):
         run_time = time.perf_counter() - start_time
             
         numpoly.savez(f'../data/lotka2/{species}/poly_{P}+{date_today}.npz',*poly)
+        
+        np.savez(f'../data/lotka2/{species}/uhat_{P}+{date_today}.npz',*uhats)
             
         df_indices = df_indices.append({'alpha': st[0], 'beta': st[1], 'delta': st[2], 'gamma': st[3]          }, ignore_index=True)
         df_indices_s1 = df_indices_s1.append({'alpha': s1[0], 'beta': s1[1], 'delta': s1[2], 'gamma': s1[3]          }, ignore_index=True)
