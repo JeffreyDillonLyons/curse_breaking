@@ -15,7 +15,7 @@ from ema_workbench.connectors.vensim import (
     get_data,
     be_quiet,
     vensimDLLwrapper,
-    VensimModel,
+    VensimModel
 )
 from ema_workbench import (
     ema_logging,
@@ -23,6 +23,7 @@ from ema_workbench import (
     RealParameter,
     ScalarOutcome,
     Scenario,
+    Samplers
 )
 
 from ema_workbench.em_framework import SobolSampler, get_SALib_problem
@@ -98,7 +99,7 @@ def run_sobol(model_file, working_directory, parameter_names, resolution, dimens
 
     with MultiprocessingEvaluator(model, n_processes=50) as evaluator:
         results = evaluator.perform_experiments(
-            resolution, uncertainty_sampling="sobol"
+            resolution, uncertainty_sampling=Samplers.SOBOL
         )
 
     experiments, outcomes = results
@@ -472,22 +473,22 @@ if __name__ == "__main__":
     model_filename = "RB_V25_ets_1_policy_modified_adaptive_extended_outcomes.vpm"
     working_directory = "./models"
 
-    get_model_evals(
-        model_filename,
-        working_directory,
-        parameter_names,
-        sparse=False,
-        max_order=10,
-        dimension=4,
-    )
-    get_model_evals(
-        model_filename,
-        working_directory,
-        parameter_names,
-        sparse=True,
-        max_order=10,
-        dimension=4,
-    )
+    # get_model_evals(
+    #     model_filename,
+    #     working_directory,
+    #     parameter_names,
+    #     sparse=False,
+    #     max_order=10,
+    #     dimension=4,
+    # )
+    # get_model_evals(
+    #     model_filename,
+    #     working_directory,
+    #     parameter_names,
+    #     sparse=True,
+    #     max_order=10,
+    #     dimension=4,
+    # )
 
     """
     NOTE: We will start with 5 dimensions. Resolution of 2048 = 24,576 experiments ~ roughly what we agreed.
