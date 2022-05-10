@@ -15,11 +15,16 @@ from ema_workbench.connectors.vensim import (
     get_data,
     be_quiet,
     vensimDLLwrapper,
-    VensimModel
+    VensimModel,
 )
-from ema_workbench import ema_logging, MultiprocessingEvaluator, RealParameter, \
-     ScalarOutcome, Scenario
-     
+from ema_workbench import (
+    ema_logging,
+    MultiprocessingEvaluator,
+    RealParameter,
+    ScalarOutcome,
+    Scenario,
+)
+
 from ema_workbench.em_framework import SobolSampler, get_SALib_problem
 
 from SALib.analyze import sobol
@@ -27,8 +32,10 @@ from SALib.analyze import sobol
 # This is the script where my own sensitivity indices functions are kept
 import sensitivity
 
+
 def return_last(x):
     return x[-1]
+
 
 def setup_vensimmodel(model_file, working_directory, parameter_names, bounds):
     """
@@ -44,7 +51,7 @@ def setup_vensimmodel(model_file, working_directory, parameter_names, bounds):
     -------
 
     """
-    model = VensimModel('vensimmodel', wd=working_directory, model_file=model_file)
+    model = VensimModel("vensimmodel", wd=working_directory, model_file=model_file)
 
     uncertainties = []
     for name, bound in zip(parameter_names, bounds):
@@ -58,7 +65,7 @@ def setup_vensimmodel(model_file, working_directory, parameter_names, bounds):
     return model
 
 
-def run_sobol(model_file, working_directory, parameter_names,resolution,dimension):
+def run_sobol(model_file, working_directory, parameter_names, resolution, dimension):
     """
 
     Parameters
@@ -81,33 +88,37 @@ def run_sobol(model_file, working_directory, parameter_names,resolution,dimensio
 
     """
     current_names = parameter_names[0:dimension]
-        
+
     with open("./data/variable_settings.json") as f:
         var_settings = json.loads(f.read())
 
     bounds = [var_settings[name] for name in current_names]
-    
+
     model = setup_vensimmodel(model_file, working_directory, parameter_names, bounds)
 
-    with MultiprocessingEvaluator(model) as evaluator:
-        results = evaluator.perform_experiments(resolution, uncertainty_sampling='sobol')
+    with MultiprocessingEvaluator(model, n_processes=50) as evaluator:
+        results = evaluator.perform_experiments(
+            resolution, uncertainty_sampling="sobol"
+        )
 
-    experiments,outcomes = results
-    
+    experiments, outcomes = results
+
     problem = get_SALib_problem(model.uncertainties)
-    
-    Si = sobol.analyze(problem, outcomes['fraction renewables'])
-    
-    Si.pop('S2')
-    Si.pop('S2_conf')
+
+    Si = sobol.analyze(problem, outcomes["fraction renewables"])
+
+    Si.pop("S2")
+    Si.pop("S2_conf")
     df = pd.DataFrame.from_dict(Si)
-    df.to_csv(f'./data/sobol_{dimension}_{resolution}.csv')
+    df.to_csv(f"./data/sobol_{dimension}_{resolution}.csv")
     print(Si)
-    
-    
+
     return results
 
-def get_model_evals(model_file, working_directory, parameter_names, sparse, max_order, dimension):
+
+def get_model_evals(
+    model_file, working_directory, parameter_names, sparse, max_order, dimension
+):
     """
 
     Parameters
@@ -134,54 +145,68 @@ def get_model_evals(model_file, working_directory, parameter_names, sparse, max_
 
     """
     if sparse:
-        grid = 'sparse'
-    
+        grid = "sparse"
+
     else:
-        grid = 'gaussian'
-        
+        grid = "gaussian"
+
     current_names = parameter_names[0:dimension]
-        
+
     with open("./data/variable_settings.json") as f:
         var_settings = json.loads(f.read())
 
     bounds = [var_settings[name] for name in current_names]
 
     model = setup_vensimmodel(model_file, working_directory, current_names, bounds)
-    
-    distributions = [ch.Uniform(bound[0], bound[1]) for bound in bounds]
-    
-    joint_distribution = ch.J(*distributions)
-    
-    nodes = np.zeros((0,dimension), dtype = 'float')
-    
-    dick = {}
-    
-    for level in range(1, max_order + 1):
-        n,w = ch.generate_quadrature(level, joint_distribution, sparse=sparse, rule='g', growth=False) 
-        nodes = np.concatenate((nodes,n.T), axis=0)
-   
-    scenarios = [Scenario(name='Jeff', **{k:v for k,v in zip(current_names, node)}) for node in \
-                 nodes]
 
-    with MultiprocessingEvaluator(model) as evaluator:
+    distributions = [ch.Uniform(bound[0], bound[1]) for bound in bounds]
+
+    joint_distribution = ch.J(*distributions)
+
+    nodes = np.zeros((0, dimension), dtype="float")
+
+    dick = {}
+
+    for level in range(1, max_order + 1):
+        n, w = ch.generate_quadrature(
+            level, joint_distribution, sparse=sparse, rule="g", growth=False
+        )
+        nodes = np.concatenate((nodes, n.T), axis=0)
+
+    scenarios = [
+        Scenario(name="Jeff", **{k: v for k, v in zip(current_names, node)})
+        for node in nodes
+    ]
+
+    with MultiprocessingEvaluator(model, n_processes=50) as evaluator:
         results = evaluator.perform_experiments(scenarios)
-          
-    experiments,outcomes = results
-    
+
+    experiments, outcomes = results
+
     nodes = np.array(experiments[current_names])
-    
-    for node,outcome in zip(nodes,outcomes['fraction renewables']):
-    
+
+    for node, outcome in zip(nodes, outcomes["fraction renewables"]):
         dick[tuple(node)] = outcome
-        
-    dick = {str(k):float(v) for k,v in dick.items()}
+
+    dick = {str(k): float(v) for k, v in dick.items()}
     dump = json.dumps(dick)
-    
-    with open(f'./data/runs_dict_mo{max_order}_dim{dimension}_{grid}.json', 'w') as f:
+
+    with open(f"./data/runs_dict_mo{max_order}_dim{dimension}_{grid}.json", "w") as f:
         f.write(dump)
 
-def run_chaospy(model_file, working_directory, parameter_names, bounds,
-                P, O, rule="g", sparse=False, growth=False, ID="gfg"):
+
+def run_chaospy(
+    model_file,
+    working_directory,
+    parameter_names,
+    bounds,
+    P,
+    O,
+    rule="g",
+    sparse=False,
+    growth=False,
+    ID="gfg",
+):
     model = setup_vensimmodel(model_file, working_directory, parameter_names, bounds)
 
     distributions = [ch.Uniform(bound[0], bound[1]) for bound in bounds]
@@ -216,29 +241,33 @@ def run_chaospy(model_file, working_directory, parameter_names, bounds,
     # is a seventh orders quadrature rule which requires 32,768 evaluations
     # = 273 minutes.
 
-    scenarios = [Scenario(name=None, **{k:v for k,v in zip(parameter_names, node)}) for node in
-                 transport]
+    scenarios = [
+        Scenario(name=None, **{k: v for k, v in zip(parameter_names, node)})
+        for node in transport
+    ]
 
     with MultiprocessingEvaluator(model) as evaluator:
         results = evaluator.perform_experiments(scenarios)
 
-    experiments,outcomes = results
-    
+    experiments, outcomes = results
+
     nodes = np.array(experiments[parameter_names])
-    
-    for node,outcome in zip(nodes,outcomes['fraction_renewables']):
-    
-        evals[tuple(node)] = outcome   #potential problem here if the nodes are diff after returning from EMA >> weight_d
+
+    for node, outcome in zip(nodes, outcomes["fraction_renewables"]):
+
+        evals[
+            tuple(node)
+        ] = outcome  # potential problem here if the nodes are diff after returning from EMA >> weight_d
         dick[tuple(node)] = outcome
-        
+
     abscissas = np.array(list(evals.keys())).T
     model_evals = list(evals.values())
     weights = [weight_d[i] for i in evals.keys()]
-    
+
     if not len(abscissas.shape[0]) == len(weights):
-        print('Weight_lookup failed')
+        print("Weight_lookup failed")
         return
-        
+
     polynomial, uhat = ch.fit_quadrature(
         expansion, abscissas, weights, model_evals, retall=1
     )
@@ -246,12 +275,12 @@ def run_chaospy(model_file, working_directory, parameter_names, bounds,
     poly_path = os.path.abspath(f"./data/polynomials_{ID}_poly_{O}_{P}_{today}.npz")
     uhat_path = os.path.abspath(f"./data/polynomials_{ID}_uhat_{O}_{P}_{today}.npz")
     index_path = os.path.abspath(f"./data/indices_{ID}_{O}_{P}_{today}.csv")
-    
-    with open(poly_path, 'wb') as fh:
+
+    with open(poly_path, "wb") as fh:
         numpoly.savez(fh, polynomial)
-    with open(uhat_path, 'wb') as fh:
+    with open(uhat_path, "wb") as fh:
         numpoly.savez(fh, uhat)
-        
+
     run_time = time.perf_counter() - start_time
     no_samples = len(weights)
 
@@ -280,8 +309,7 @@ def run_chaospy(model_file, working_directory, parameter_names, bounds,
     return polynomial, s1, st, run_time
 
 
-def solver(model, results_file, joint_distribution, P, O, rule, sparse,
-           growth, ID):
+def solver(model, results_file, joint_distribution, P, O, rule, sparse, growth, ID):
     """
     This function carries out the experiment by constructing an expansion and
     a quadrature grid with weights. Nodes for which values are not present in
@@ -366,9 +394,9 @@ def solver(model, results_file, joint_distribution, P, O, rule, sparse,
     uhat_path = os.path.abspath(f"./data/polynomials_{ID}_uhat_{O}_{P}_{today}.npz")
     index_path = os.path.abspath(f"./data/indices_{ID}_sobol_{O}_{P}_{today}.csv")
 
-    with open(poly_path, 'wb') as fh:
+    with open(poly_path, "wb") as fh:
         numpoly.savez(fh, polynomial)
-    with open(uhat_path, 'wb') as fh:
+    with open(uhat_path, "wb") as fh:
         numpoly.savez(fh, uhat)
 
     run_time = time.perf_counter() - start_time
@@ -418,44 +446,52 @@ def wrapper():
 if __name__ == "__main__":
     ema_logging.log_to_stderr(ema_logging.INFO)
 
-    '''
+    """
     Here are all the parameters I have chosen, there are 17 in total here. As discussed, the first three campaings will be with 5,10,15 variables.  
-    '''
+    """
     parameter_names = [
-    
-        'progress ratio biomass',
-        'progress ratio coal',
-        'progress ratio hydro',
-        'progress ratio igcc',
-        'progress ratio ngcc',
-        'progress ratio nuclear',
-        'progress ratio pv',
-        'progress ratio wind',
-        'economic lifetime biomass',
-        'economic lifetime coal',
-        'economic lifetime gas',
-        'economic lifetime hydro',
-        'economic lifetime igcc',
-        'economic lifetime ngcc',
-        'economic lifetime nuclear',
-        'economic lifetime pv',
-        'economic lifetime wind',
-
+        "progress ratio biomass",
+        "progress ratio coal",
+        "progress ratio hydro",
+        "progress ratio igcc",
+        "progress ratio ngcc",
+        "progress ratio nuclear",
+        "progress ratio pv",
+        "progress ratio wind",
+        "economic lifetime biomass",
+        "economic lifetime coal",
+        "economic lifetime gas",
+        "economic lifetime hydro",
+        "economic lifetime igcc",
+        "economic lifetime ngcc",
+        "economic lifetime nuclear",
+        "economic lifetime pv",
+        "economic lifetime wind",
     ]
-    
-    model_filename =  "RB_V25_ets_1_policy_modified_adaptive_extended_outcomes.vpm"
-    working_directory = "./models"
-    
-    get_model_evals(model_filename, working_directory, parameter_names,sparse=False, max_order=10, dimension=4)
-    get_model_evals(model_filename, working_directory, parameter_names,sparse=True, max_order=10, dimension=4)
-    
-    '''
-    NOTE: We will start with 5 dimensions. Resolution of 2048 = 24,576 experiments ~ roughly what we agreed.
-    '''
-    run_sobol(model_filename, working_directory, parameter_names, resolution=2048, dimension=5)
-    
-    
 
- 
-   
-    
+    model_filename = "RB_V25_ets_1_policy_modified_adaptive_extended_outcomes.vpm"
+    working_directory = "./models"
+
+    get_model_evals(
+        model_filename,
+        working_directory,
+        parameter_names,
+        sparse=False,
+        max_order=10,
+        dimension=4,
+    )
+    get_model_evals(
+        model_filename,
+        working_directory,
+        parameter_names,
+        sparse=True,
+        max_order=10,
+        dimension=4,
+    )
+
+    """
+    NOTE: We will start with 5 dimensions. Resolution of 2048 = 24,576 experiments ~ roughly what we agreed.
+    """
+    run_sobol(
+        model_filename, working_directory, parameter_names, resolution=2048, dimension=5
+    )
