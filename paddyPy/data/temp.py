@@ -1,9 +1,10 @@
-
-
 def main():
-    
-    s = input('WARNING: You may only use this program if you **ARE NOT** a lambda cuck. If you are instead an OOP  gigaChad press enter to continue...')
-    print(r"""\
+
+    s = input(
+        "WARNING: You may only use this program if you **ARE NOT** a lambda cuck. If you are instead an OOP  gigaChad press enter to continue..."
+    )
+    print(
+        r"""\
 
                 000000KK00KKKKKKKXXKKKK00KKKKK0KXKKKKK0O0KXKKKXXXXXXXNNXXXXXXXXXXXXXXXXXXXKKKXXXXKOxxxxkkxooxkO00kkOOOkddodxO0KNNNXXKKKKXXNXKOddxxxOXNXXKKKXXXNNXXXXXKOkOOkOdodxxxxxxOKXKK00KKKXXKKKKKKKKKKK0000000OOOOO
 OO0000KK0KKKKKKKKKXXXXKXXXKKXXXKKKKKXXXKKXXXXXXNXNNXXXNNNNNNNNXXXXNNNNNXNNXXXNXOc'.    ..   ..''.......     ..,cdOKNXXXXXNNNNNXXNXXXNXXXKKKKXXXXXXNXXKkodddxxxkKXXXXKKKXKKK0KKXXKKKKK00KKKKKK000000kk0OO
@@ -63,17 +64,16 @@ xkkkkOOOOOOOkkOOOOOO0O;                                                 'kKKXNNN
 xxxxxxxxddxxxkOOOkkkOOc.  ..                  .         .......... .....,k00NNNNKkkkO0OkOkxdolcc:::clllodxxxO0Okl:dXXXWWWNK0KKK0:   ..........................'''....'...','''.........;k00000000OOOOOOk
 
 
-            """)
-    
-    
-    
-#    shlug = open('data/shlug.txt')
- #   shlug_lines = shlug.readlines()
-  #  for jimmy in shlug_lines:
-   #     print(jimmy)
-    #shlug.close()
+            """
+    )
+
+    #    shlug = open('data/shlug.txt')
+    #   shlug_lines = shlug.readlines()
+    #  for jimmy in shlug_lines:
+    #     print(jimmy)
+    # shlug.close()
 
     return s
 
-main()
 
+main()

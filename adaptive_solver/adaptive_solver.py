@@ -1,5 +1,4 @@
-
-'''Preamble'''
+"""Preamble"""
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -25,23 +24,25 @@ from SALib.sample import saltelli
 from SALib.analyze import sobol
 from SALib.test_functions import Ishigami
 
-#Chaospy
+# Chaospy
 import chaospy as ch
+
 
 def c(s):
     os.chdir(s)
     return os.getcwd()
-''''''
 
 
+""""""
 
 
-x0 = 33                                                               #Initial conditions same as before
+x0 = 33  # Initial conditions same as before
 y0 = 6.2
-X = [x0,y0]
-t = np.linspace(0., 30, 1000)
+X = [x0, y0]
+t = np.linspace(0.0, 30, 1000)
 
-#Model
+# Model
+
 
 def lotka(X, t, alpha, beta, delta, gamma):
     x, y = X
@@ -49,51 +50,50 @@ def lotka(X, t, alpha, beta, delta, gamma):
     doty = y * (-delta + gamma * x)
     return np.array([dotx, doty])
 
-#Parameter space
+
+# Parameter space
 
 problem = {
-    'num_vars': 4,
-    'names': ['alpha','beta','delta','gamma'],
-    'bounds': [[0.44,0.68],
-               [0.02,0.044],
-               [0.71,1.15],
-               [0.0226,0.0354]]
+    "num_vars": 4,
+    "names": ["alpha", "beta", "delta", "gamma"],
+    "bounds": [[0.44, 0.68], [0.02, 0.044], [0.71, 1.15], [0.0226, 0.0354]],
 }
 ##Parameters
-alpha = ch.Uniform(0.44, 0.68) #We choose uniform distributions to reflect our lack of knowledge about the relative likelihood functions
-beta = ch.Uniform(0.02, 0.044) #We take the same bounds as for the Sobol-Saltelli analysis
+alpha = ch.Uniform(
+    0.44, 0.68
+)  # We choose uniform distributions to reflect our lack of knowledge about the relative likelihood functions
+beta = ch.Uniform(
+    0.02, 0.044
+)  # We take the same bounds as for the Sobol-Saltelli analysis
 delta = ch.Uniform(0.71, 1.15)
 gamma = ch.Uniform(0.0226, 0.0354)
 
-joint = ch.J(alpha,beta,delta,gamma) #The input paramter distributions are assumed to be independent so we may easily construct the joint input probability distribution.
+joint = ch.J(
+    alpha, beta, delta, gamma
+)  # The input paramter distributions are assumed to be independent so we may easily construct the joint input probability distribution.
 
 ##Expansion
-expansion = ch.generate_expansion(2, joint) #Here we generate the polynomial expansion which is truncated a maximum mixed order of 2.
+expansion = ch.generate_expansion(
+    2, joint
+)  # Here we generate the polynomial expansion which is truncated a maximum mixed order of 2.
 
-gt_prey = pd.read_csv('./data/indices_328000_GT.csv').ST
+gt_prey = pd.read_csv("./data/indices_328000_GT.csv").ST
 gt_norm = np.linalg.norm(gt_prey)
 
 dick = {}
 
-vectors = np.identity(len(joint), dtype='int')
+vectors = np.identity(len(joint), dtype="int")
 
-growth=False
-recurrence_algorithm='stieltjes'
-rule='g'
-tolerance=1e-10
-scaling=3
-n_max=50000
+growth = False
+recurrence_algorithm = "stieltjes"
+rule = "g"
+tolerance = 1e-10
+scaling = 3
+n_max = 50000
 
 
 def _construct_lookup(
-        orders,
-        dists,
-        growth,
-        recurrence_algorithm,
-        rules,
-        tolerance,
-        scaling,
-        n_max,
+    orders, dists, growth, recurrence_algorithm, rules, tolerance, scaling, n_max,
 ):
     """
     Create abscissas and weights look-up table so values do not need to be
@@ -137,9 +137,11 @@ def construct_wrapper(maxx):
         rules=rule,
         tolerance=tolerance,
         scaling=scaling,
-        n_max=5000)
+        n_max=5000,
+    )
 
     return x_lookup, w_lookup
+
 
 x_lookup, w_lookup = construct_wrapper(10)
 
@@ -183,6 +185,7 @@ def generate_candidates(index_set, P):
 
     return candidates
 
+
 def sobol_error(vec):
     return np.linalg.norm(gt_prey - vec) / gt_norm
 
@@ -219,8 +222,8 @@ def solver(old_set):
 
     polly = ch.fit_quadrature(expansion, nodes_list, weights_list, evals_list)
     poly.append(polly)
-    print('Solver_time >>>', time.perf_counter() - solver_time)
-    print('Weight sum >>>', sum(weights_list))
+    print("Solver_time >>>", time.perf_counter() - solver_time)
+    print("Weight sum >>>", sum(weights_list))
     return len(weights_list)
 
 
@@ -244,7 +247,9 @@ def assign_errors(active_set):
                 current_errors.append(abs(dick[node] - poly_eval))
 
             else:
-                solution = integrate.odeint(lotka, (33, 6.2), t, args=(a, b, d, g)).T[0][910]
+                solution = integrate.odeint(lotka, (33, 6.2), t, args=(a, b, d, g)).T[
+                    0
+                ][910]
                 current_errors.append(abs(solution - poly_eval))
 
         active_errors.append(np.mean(current_errors))
@@ -254,156 +259,163 @@ def assign_errors(active_set):
     return active
     # active = [i for i in OrderedDict((tuple(x[0]), x) for x in active).values()]if np.isnan(poly[-1](1,2,3,4)):
 
+
 def algorithm(P):
-    
+
     global dick, old, candidates, poly, active, global_errors, no_nodes
-    
-    '''Initialise'''
-    
-    seed = (2,2,1,2)
+
+    """Initialise"""
+
+    seed = (2, 2, 1, 2)
     expansion = ch.generate_expansion(P, joint)
-    vectors = np.identity(len(joint), dtype='int')
+    vectors = np.identity(len(joint), dtype="int")
     date_today = datetime.date.today()
     start_time = time.perf_counter()
-    
+
     step = 0
-    
-    old = [(1,1,1,1)]
+
+    old = [(1, 1, 1, 1)]
     active = []
     poly = []
-    
+
     local_errors = []
     global_errors = []
-    
-    names = ['alpha','beta','delta','gamma']
-    
-    df = pd.DataFrame(columns=['chosen_index','local_error','global_error','no_nodes','run_time'])
-    df_indices = pd.DataFrame(columns=['alpha','beta','delta','gamma'])
 
-    
-    '''Execute zeroth step'''
-    
+    names = ["alpha", "beta", "delta", "gamma"]
+
+    df = pd.DataFrame(
+        columns=["chosen_index", "local_error", "global_error", "no_nodes", "run_time"]
+    )
+    df_indices = pd.DataFrame(columns=["alpha", "beta", "delta", "gamma"])
+
+    """Execute zeroth step"""
+
     trivial = [seed]
     solver(old)
     assign_errors(old)
-    
+
     st = ch.Sens_t(poly[-1], joint)
     s1 = ch.Sens_m(poly[-1], joint)
-    
+
     global_errors.append(sobol_error(st))
-    
-    print('Global error >>>', global_errors[-1])
-    print('Step time >>>', time.perf_counter() - start_time, 'seconds')
-    print('-'*10,'break','-'*10)
 
+    print("Global error >>>", global_errors[-1])
+    print("Step time >>>", time.perf_counter() - start_time, "seconds")
+    print("-" * 10, "break", "-" * 10)
 
-    '''Main loop'''
-    
+    """Main loop"""
+
     while global_errors[-1] > 0.1 or np.isnan(global_errors[-1]):
-        
+
         start_time = time.perf_counter()
-        
-        
+
         chosen_index = active[-1][0]
         local_errors.append(active[-1][1])
         active.pop()
-    
+
         old.append(chosen_index)
-        
-        print('Chosen index >>>', chosen_index)
-        
+
+        print("Chosen index >>>", chosen_index)
+
         number_nodes = solver(old)
-        
-        candidates = generate_candidates(chosen_index,P)
+
+        candidates = generate_candidates(chosen_index, P)
         stripped_active = [i[0] for i in active] + [j for j in candidates]
         active = assign_errors(stripped_active)
-        
-        sobol_time = time.perf_counter() 
+
+        sobol_time = time.perf_counter()
 
         st = ch.Sens_t(poly[-1], joint)
         s1 = ch.Sens_m(poly[-1], joint)
-        
-        print('Sobol time >>>', time.perf_counter() - sobol_time)
-        
+
+        print("Sobol time >>>", time.perf_counter() - sobol_time)
+
         global_errors.append(sobol_error(st))
 
-        print('Global error >>>', global_errors[-1])
-        
-        '''Save data'''
-        run_time = time.perf_counter() - start_time
-        
-        numpoly.savez(f'./data/polynomials/poly_{P}_{date_today}.npz',*poly)
-        
-        df_indices = df_indices.append({'alpha': st[0], 'beta': st[1], 'delta': st[2], 'gamma': st[3]          }, ignore_index=True)
-        df = df.append({'chosen_index': chosen_index,'local_error':local_errors[-1],                               'global_error':global_errors[-1],'no_nodes':number_nodes, 'run_time':run_time}, ignore_index=True)
-        
-        df.to_csv(f'./data/run_file_{P}_{date_today}.csv')
-        df_indices.to_csv(f'./data/total_order_indices_{P}_{date_today}.csv')
+        print("Global error >>>", global_errors[-1])
 
-        print('Step time >>>', time.perf_counter() - start_time, 'seconds')
-        print('-'*10,'break','-'*10)
-        
+        """Save data"""
+        run_time = time.perf_counter() - start_time
+
+        numpoly.savez(f"./data/polynomials/poly_{P}_{date_today}.npz", *poly)
+
+        df_indices = df_indices.append(
+            {"alpha": st[0], "beta": st[1], "delta": st[2], "gamma": st[3]},
+            ignore_index=True,
+        )
+        df = df.append(
+            {
+                "chosen_index": chosen_index,
+                "local_error": local_errors[-1],
+                "global_error": global_errors[-1],
+                "no_nodes": number_nodes,
+                "run_time": run_time,
+            },
+            ignore_index=True,
+        )
+
+        df.to_csv(f"./data/run_file_{P}_{date_today}.csv")
+        df_indices.to_csv(f"./data/total_order_indices_{P}_{date_today}.csv")
+
+        print("Step time >>>", time.perf_counter() - start_time, "seconds")
+        print("-" * 10, "break", "-" * 10)
+
         step += 1
-        
-    print('Congratulations, the algorithm has converged!')
-    print('Here are the results...')
-    print('-'*20)
-    print(f'ST_alpha:{st[0].round(4)}, ST_beta:{st[1].round(4)}, ST_delta:{st[2].round(4)}, ST_gamma:{st[3].round(4)}')
-    print(f'The final grid contains {number_nodes} nodes.')
-    print(f'The total run time was {df.run_time.sum()}, not bad!')
-          
+
+    print("Congratulations, the algorithm has converged!")
+    print("Here are the results...")
+    print("-" * 20)
+    print(
+        f"ST_alpha:{st[0].round(4)}, ST_beta:{st[1].round(4)}, ST_delta:{st[2].round(4)}, ST_gamma:{st[3].round(4)}"
+    )
+    print(f"The final grid contains {number_nodes} nodes.")
+    print(f"The total run time was {df.run_time.sum()}, not bad!")
+
 
 def combinator(current_index):
     coeff = 1
-    
+
     for vector in vectors:
-        
-        if tuple(np.array(current_index, dtype='int') + vector) in old:
-            
+
+        if tuple(np.array(current_index, dtype="int") + vector) in old:
+
             coeff += -1
-            
-    return coeff 
+
+    return coeff
+
 
 def build_nodes_weights(current_index):
-    
+
     nodestack = []
     weightstack = []
-    
-    '''Nodes'''
-    
-    for index,element in enumerate(current_index):
+
+    """Nodes"""
+
+    for index, element in enumerate(current_index):
         nodestack.append([])
         nodestack[index] = list(x_lookup[index][element])
-        
+
     nodes = nodestack[0]
-    
-    for i in range(1,len(nodestack)):
-        nodes = product(nodes,nodestack[i])
-        
-    nodes = [(a,b,c,d) for (((a,b),c),d) in nodes]
-    
-    '''Weights'''
-    
-    for index,element in enumerate(current_index):
+
+    for i in range(1, len(nodestack)):
+        nodes = product(nodes, nodestack[i])
+
+    nodes = [(a, b, c, d) for (((a, b), c), d) in nodes]
+
+    """Weights"""
+
+    for index, element in enumerate(current_index):
         weightstack.append([])
         weightstack[index] = list(w_lookup[index][element])
-        
+
     weights = weightstack[0]
-    
-    for i in range(1,len(weightstack)):
-        weights = product(weights,weightstack[i])
-        
-    weights = [(a*b*c*d) for (((a,b),c),d) in weights]
-    
-    
-    return nodes,weights
-        
+
+    for i in range(1, len(weightstack)):
+        weights = product(weights, weightstack[i])
+
+    weights = [(a * b * c * d) for (((a, b), c), d) in weights]
+
+    return nodes, weights
 
 
-algorithm(5)     
-
-
-
-
-
-
+algorithm(5)
