@@ -58,7 +58,11 @@ def plot_tile(old,title,order,path):
     
     cmap = plt.get_cmap('Blues', M)
     
-    plt.imshow(np.array(old).T, cmap=cmap, aspect='auto')
+    img = ax.imshow(np.array(old).T, cmap=cmap, aspect='auto')
+    t = np.arange(0,len(old))
+    ax.set_xticks(t)
+    
+    
     
     norm = mpl.colors.Normalize(vmin=0, vmax=M-1)
     
@@ -169,11 +173,11 @@ def plot_poly(polynomials,sequence, path, order):
 
 if __name__ == "__main__":
 
-    root = r"C:\Users\jeffr\OneDrive\Documents\GitHub\new\adaptive_solver\data\Experimental_data_lotka_2\prey "
+    root = r"C:\Users\jeffr\OneDrive\Documents\GitHub\new\adaptive_solver\data\Experimental_data_lotka_2\prey"
     
     root = os.path.abspath(root)
     
-    order = 3
+    order = 6
     
     df = pd.read_csv(root + f'\\run_file_{order}.csv')
     
@@ -181,17 +185,19 @@ if __name__ == "__main__":
     
     title = f'Prey: truncation order = {order}'
     
+    path = '.'
+    
     '''Polynomials'''
     
-    polynomials = list(numpoly.load(root + f'\\poly_{order}.npz').values())
+    # polynomials = list(numpoly.load(root + f'\\poly_{order}.npz').values())
     
     
-    sequence = [0,1,4,5]
+    # sequence = [0,1,4,5]
     
-    plot_poly(polynomials,sequence,path=root,order=order)
+    # plot_poly(polynomials,sequence,path=root,order=order)
     
     # print(old)
-    # plot_tile(old,title,order,path)
+    plot_tile(old,title,order,path=path)
     # plot_hist(old,order,path)
     
     
