@@ -474,13 +474,20 @@ if __name__ == "__main__":
     model_filename = "RB_V25_ets_1_policy_modified_adaptive_extended_outcomes.vpm"
     working_directory = "./models"
 
+    '''
+    Final experiments - 11:22 19/05/2022
+    ------------------------------------
+    '''
+    # EXPERIMENT 1 : 5 dimensions  #
+    #------------------------------#
+    
     # get_model_evals(
-    #     model_filename,
-    #     working_directory,
-    #     parameter_names,
-    #     sparse=False,
-    #     max_order=10,
-    #     dimension=4,
+        # model_filename,
+        # working_directory,
+        # parameter_names,
+        # sparse=False,
+        # max_order=10,
+        # dimension=5,
     # )
     # get_model_evals(
     #     model_filename,
@@ -488,12 +495,60 @@ if __name__ == "__main__":
     #     parameter_names,
     #     sparse=True,
     #     max_order=10,
-    #     dimension=4,
+    #     dimension=5,
     # )
-
-    """
-    NOTE: We will start with 5 dimensions. Resolution of 2048 = 24,576 experiments ~ roughly what we agreed.
-    """
-    run_sobol(
-        model_filename, working_directory, parameter_names, resolution=2048, dimension=5
+    
+    # EXPERIMENT 2 : 8 dimensions  #
+    #------------------------------#
+    
+    get_model_evals(
+          model_filename,
+          working_directory,
+          parameter_names,
+          sparse=False,
+          max_order=4,
+          dimension=8,
     )
+    # get_model_evals(
+    #     model_filename,
+    #     working_directory,
+    #     parameter_names,
+    #     sparse=True,
+    #     max_order=8,
+    #     dimension=8,
+    # )
+    
+    # EXPERIMENT 3 : 10 dimensions #
+    #------------------------------#
+    
+    # get_model_evals(
+    #     model_filename,
+    #     working_directory,
+    #     parameter_names,
+    #     sparse=False,
+    #     max_order=4,
+    #     dimension=10,
+    # )
+    # get_model_evals(
+    #     model_filename,
+    #     working_directory,
+    #     parameter_names,
+    #     sparse=True,
+    #     max_order=7,
+    #     dimension=10,
+    # )
+  
+    ''' SOBOL ensemble runs for each of the above dimensions - d=5 already done.'''
+    
+    # 8 dimensions - 36,864 experiments
+    # run_sobol(
+        # model_filename, working_directory, parameter_names, resolution=2048, dimension=8
+    # )
+    
+    # 10 dimensions - 45,056 experiments
+    # run_sobol(
+        # model_filename, working_directory, parameter_names, resolution=2048, dimension=10
+    # )
+    
+    
+    
