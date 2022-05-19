@@ -86,7 +86,7 @@ dick = {}
 vectors = np.identity(len(joint), dtype="int")
 
 
-gt = pd.read_csv('./data/gt_L3.csv',index_col=['type','params']).loc['mouse','ST']
+gt = pd.read_csv('./data/redone_gt_lotka3_524288.csv',index_col=['type','params']).loc['owl','ST']
 gt_norm = np.linalg.norm(gt)
 
 growth=False
@@ -173,7 +173,7 @@ def generate_candidates(index_set, P):
     for candidate in candidates:
         # if candidate not in old:
 
-        if np.all(np.array(candidate) <= P) and np.linalg.norm(np.array(candidate),ord=1) <= (P+6):
+         if np.all(np.array(candidate) <= P):# and np.linalg.norm(np.array(candidate),ord=1) <= (P+6):
 
             temp.append(candidate)
 
@@ -316,7 +316,7 @@ def algorithm(P, species, TOL, merge):
     step = 0
 
     
-    old = [tuple(np.ones(len(joint),dtype='int'))]
+    old = [tuple(np.zeros(len(joint),dtype='int'))]
     active = []
     poly = []
     uhats = []
@@ -350,11 +350,7 @@ def algorithm(P, species, TOL, merge):
     print("Step time >>>", time.perf_counter() - start_time, "seconds")
     print("-" * 10, "break", "-" * 10)
 
-    """Main loop"""
-
-    while (global_errors[-1] > 0.1 or np.isnan(global_errors[-1])) and len(active) > 0:
-
-
+  
     '''Main loop'''
     
     while (global_errors[-1] > TOL or np.isnan(global_errors[-1])) and len(active)>0:
@@ -543,6 +539,4 @@ def sense_t(uhat,exponents,expansion):
     
     return st
 
-algorithm(3,'mouse',0.2, merge=True)
-
-print(xlook_up)
+algorithm(3,'owl',0.2, merge=True)
