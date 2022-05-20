@@ -248,7 +248,7 @@ def run_chaospy(
         for node in transport
     ]
 
-    with MultiprocessingEvaluator(model) as evaluator:
+    with MultiprocessingEvaluator(model, n_processes=50) as evaluator:
         results = evaluator.perform_experiments(scenarios)
 
     experiments, outcomes = results
@@ -481,22 +481,22 @@ if __name__ == "__main__":
     # EXPERIMENT 1 : 5 dimensions  #
     #------------------------------#
     
-    # get_model_evals(
-        # model_filename,
-        # working_directory,
-        # parameter_names,
-        # sparse=False,
-        # max_order=10,
-        # dimension=5,
-    # )
-    # get_model_evals(
-    #     model_filename,
-    #     working_directory,
-    #     parameter_names,
-    #     sparse=True,
-    #     max_order=10,
-    #     dimension=5,
-    # )
+    get_model_evals(
+        model_filename,
+        working_directory,
+        parameter_names,
+        sparse=False,
+        max_order=10,
+        dimension=5,
+    )
+    get_model_evals(
+        model_filename,
+        working_directory,
+        parameter_names,
+        sparse=True,
+        max_order=10,
+        dimension=5,
+    )
     
     # EXPERIMENT 2 : 8 dimensions  #
     #------------------------------#
@@ -509,34 +509,34 @@ if __name__ == "__main__":
           max_order=4,
           dimension=8,
     )
-    # get_model_evals(
-    #     model_filename,
-    #     working_directory,
-    #     parameter_names,
-    #     sparse=True,
-    #     max_order=8,
-    #     dimension=8,
-    # )
+    get_model_evals(
+        model_filename,
+        working_directory,
+        parameter_names,
+        sparse=True,
+        max_order=8,
+        dimension=8,
+    )
     
     # EXPERIMENT 3 : 10 dimensions #
     #------------------------------#
     
-    # get_model_evals(
-    #     model_filename,
-    #     working_directory,
-    #     parameter_names,
-    #     sparse=False,
-    #     max_order=4,
-    #     dimension=10,
-    # )
-    # get_model_evals(
-    #     model_filename,
-    #     working_directory,
-    #     parameter_names,
-    #     sparse=True,
-    #     max_order=7,
-    #     dimension=10,
-    # )
+    get_model_evals(
+        model_filename,
+        working_directory,
+        parameter_names,
+        sparse=False,
+        max_order=4,
+        dimension=10,
+    )
+    get_model_evals(
+        model_filename,
+        working_directory,
+        parameter_names,
+        sparse=True,
+        max_order=7,
+        dimension=10,
+    )
   
     ''' SOBOL ensemble runs for each of the above dimensions - d=5 already done.'''
     
