@@ -482,13 +482,6 @@ if __name__ == "__main__":
     #------------------------------#
     
     # get_model_evals(
-        # model_filename,
-        # working_directory,
-        # parameter_names,
-        # sparse=False,
-        # max_order=10,
-        # dimension=5,
-    # )
     # get_model_evals(
         # model_filename,
         # working_directory,
@@ -497,12 +490,15 @@ if __name__ == "__main__":
         # max_order=10,
         # dimension=5,
     # )
+        working_directory,
+        parameter_names,
+        sparse=True,
+        max_order=10,
+    )
     
     # EXPERIMENT 2 : 8 dimensions  #
     # ------------------------------#
     
-    # get_model_evals(
-          # model_filename,
           # working_directory,
           # parameter_names,
           # sparse=False,
@@ -517,26 +513,40 @@ if __name__ == "__main__":
         # max_order=8,
         # dimension=8,
     # )
+          parameter_names,
+          sparse=False,
+          max_order=4,
+          dimension=8,
+    get_model_evals(
+        model_filename,
+        working_directory,
+        parameter_names,
+        sparse=True,
+        max_order=8,
+        dimension=8,
+    )
+
     
     # EXPERIMENT 3 : 10 dimensions #
     # ------------------------------#
-    
-    # get_model_evals(
-        # model_filename,
-        # working_directory,
-        # parameter_names,
-        # sparse=False,
-        # max_order=4,
-        # dimension=10,
-    # )
-    # get_model_evals(
-        # model_filename,
-        # working_directory,
-        # parameter_names,
-        # sparse=True,
-        # max_order=7,
-        # dimension=10,
-    # )
+
+    get_model_evals(
+        model_filename,
+        working_directory,
+        parameter_names,
+        sparse=False,
+        max_order=4,
+        dimension=10,
+    )
+    get_model_evals(
+        model_filename,
+        working_directory,
+        parameter_names,
+        sparse=True,
+        max_order=7,
+        dimension=10,
+    )
+
   
     # ''' SOBOL ensemble runs for each of the above dimensions - d=5 already done.'''
     
