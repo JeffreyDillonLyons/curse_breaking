@@ -541,14 +541,14 @@ if __name__ == "__main__":
     ''' SOBOL ensemble runs for each of the above dimensions - d=5 already done.'''
     
     # 8 dimensions - 36,864 experiments
-    # run_sobol(
-        # model_filename, working_directory, parameter_names, resolution=2048, dimension=8
-    # )
+    run_sobol(
+        model_filename, working_directory, parameter_names, resolution=2048, dimension=8
+    )
     
     # 10 dimensions - 45,056 experiments
-    # run_sobol(
-        # model_filename, working_directory, parameter_names, resolution=2048, dimension=10
-    # )
+    run_sobol(
+        model_filename, working_directory, parameter_names, resolution=2048, dimension=10
+    )
     
     
     
