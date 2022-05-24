@@ -64,8 +64,7 @@ def setup_vensimmodel(model_file, working_directory, parameter_names, bounds):
     model.outcomes = [ScalarOutcome("fraction renewables", function=return_last)]
 
     return model
-
-
+    
 def run_sobol(model_file, working_directory, parameter_names, resolution, dimension):
     """
 
@@ -80,12 +79,10 @@ def run_sobol(model_file, working_directory, parameter_names, resolution, dimens
     Returns
     -------
     
-    Notes: 16:08 Thursday, 5 May 2022
+    Notes: 14:55 24/05/2022
     ---------------------------------
-    I have amended this to complete the sensitivity analysis. The function now
-    takes the desired dimension of the uncertainty space as an argument as well 
-    as the resolution. It forms a SALib problem and calls SALib to caculate
-    the indices.
+    I have edited this function so that the second-order index calculations
+    are also saved, as well as the experiments and outcomes from ema_wrkbench.
 
     """
     current_names = parameter_names[0:dimension]
@@ -107,12 +104,25 @@ def run_sobol(model_file, working_directory, parameter_names, resolution, dimens
     problem = get_SALib_problem(model.uncertainties)
 
     Si = sobol.analyze(problem, outcomes["fraction renewables"])
+    
+    params = [str(i) for i in range(1,dimension+1)]
+    
+    s2 = pd.DataFrame(columns=params*2)
+    s2['params'] = params
+    
+    for i,ex in enumerate(Si['S2'].T):
+        s2.iloc[:,i] = ex
+    for i,ex in enumerate(Si['S2_conf'].T):
+        s2.iloc[:,i+dimension] = ex
+    
+    s2 = s2.set_index(['params'])
+    s2.to_csv(f"./data/sobol/sobol_s2_{dimension}_{resolution}.csv")
 
-    Si.pop("S2")
-    Si.pop("S2_conf")
     df = pd.DataFrame.from_dict(Si)
-    df.to_csv(f"./data/sobol_{dimension}_{resolution}.csv")
+    df.to_csv(f"./data/sobol/sobol_{dimension}_{resolution}.csv")
     print(Si)
+    
+    save_results(results, fr'./data/sobol/runfile_{dimension}_{resolution}.tar.gz')
 
     return results
 
@@ -248,7 +258,7 @@ def run_chaospy(
         for node in transport
     ]
 
-    with MultiprocessingEvaluator(model) as evaluator:
+    with MultiprocessingEvaluator(model, n_processes=50) as evaluator:
         results = evaluator.perform_experiments(scenarios)
 
     experiments, outcomes = results
@@ -429,22 +439,6 @@ def solver(model, results_file, joint_distribution, P, O, rule, sparse, growth, 
     return polynomial, s1, st, run_time
 
 
-def wrapper():
-    # This function just loops over the given polynomial expansion orders
-    # and quadrature orders and calls solver for each. Code may be
-    # parallised here, with each 'job' i.e solver(order,level etc...) sent
-    # to a different core for evaluation.
-
-    orders = [1, 2, 3, 4, 5, 6]
-    levels = [1, 2, 3, 4, 5, 6, 7]
-
-    for order in orders:
-        for level in levels:
-            solver(order, level, rule="g", sparse=False, growth=False, ID="gfg")
-            # solver(order, level, rule='g', sparse = True, growth = False, ID='sg')
-            # solver(order, level, rule='c', sparse = True, growth = True, ID='nsg')
-
-
 if __name__ == "__main__":
     ema_logging.log_to_stderr(ema_logging.INFO)
 
@@ -475,90 +469,28 @@ if __name__ == "__main__":
     working_directory = "./models"
 
     '''
-    Final experiments - 11:22 19/05/2022
+    Final SOBOL campaign - 12:48 24/05/2022
+    > Amended code to also calculate and save second-order indices.
     ------------------------------------
     '''
-    # EXPERIMENT 1 : 5 dimensions  #
-    #------------------------------#
+    # ''' SOBOL ensemble runs for each dimension [5,8,10]'''
     
-    # get_model_evals(
-    # get_model_evals(
-        # model_filename,
-        # working_directory,
-        # parameter_names,
-        # sparse=True,
-        # max_order=10,
-        # dimension=5,
-    # )
-        working_directory,
-        parameter_names,
-        sparse=True,
-        max_order=10,
+    #5 dimensions - 24,576 experiments
+    run_sobol(
+        model_filename, working_directory, parameter_names, resolution=2048, dimension=5
     )
-    
-    # EXPERIMENT 2 : 8 dimensions  #
-    # ------------------------------#
-    
-          # working_directory,
-          # parameter_names,
-          # sparse=False,
-          # max_order=4,
-          # dimension=8,
-    # )
-    # get_model_evals(
-        # model_filename,
-        # working_directory,
-        # parameter_names,
-        # sparse=True,
-        # max_order=8,
-        # dimension=8,
-    # )
-          parameter_names,
-          sparse=False,
-          max_order=4,
-          dimension=8,
-    get_model_evals(
-        model_filename,
-        working_directory,
-        parameter_names,
-        sparse=True,
-        max_order=8,
-        dimension=8,
-    )
-
-    
-    # EXPERIMENT 3 : 10 dimensions #
-    # ------------------------------#
-
-    get_model_evals(
-        model_filename,
-        working_directory,
-        parameter_names,
-        sparse=False,
-        max_order=4,
-        dimension=10,
-    )
-    get_model_evals(
-        model_filename,
-        working_directory,
-        parameter_names,
-        sparse=True,
-        max_order=7,
-        dimension=10,
-    )
-
-  
-    # ''' SOBOL ensemble runs for each of the above dimensions - d=5 already done.'''
     
     # 8 dimensions - 36,864 experiments
-    # run_sobol(
-        # model_filename, working_directory, parameter_names, resolution=2048, dimension=8
-    # )
+    run_sobol(
+        model_filename, working_directory, parameter_names, resolution=2048, dimension=8
+    )
     
     # 10 dimensions - 45,056 experiments
-    # run_sobol(
-        # model_filename, working_directory, parameter_names, resolution=2048, dimension=10
-    # )
+    run_sobol(
+        model_filename, working_directory, parameter_names, resolution=2048, dimension=10
+    )
+    
+   
     
     
     
