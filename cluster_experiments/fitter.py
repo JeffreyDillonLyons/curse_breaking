@@ -36,14 +36,16 @@ import sensitivity
 
 def get_evals(max_order,dimension,grid):
 
-    path = f'.\\data\\runs_dict_mo{max_order}_dim{dimension}_{grid}.json'
+    path = fr'C:\Users\jeffr\OneDrive\Documents\Education\Thesis\databank\ETM\runs_dict_mo{max_order}_dim{dimension}_{grid}.json'
     
-    path = os.path.abspath(path)
+    # path = os.path.abspath(path)
     
     with open(path,'rb') as f:
         dick = json.loads(f.read())
         
     dick = {eval(k):v for k,v in dick.items()}
+    
+    print('dick_loaded...')
     
     return dick
     
@@ -202,20 +204,19 @@ if __name__ == "__main__":
     ]
     
     max_order = 10
-    dimension = 4
-    grid = 'sparse'
+    dimension = 5
+    grid = 'gaussian'
     
     dick = get_evals(max_order,dimension,grid)
     
-    oss = [1,2,3,4,5,6]
-    levels = [2,3,4,5,6,7,8,9,10]
+    
     
     # for order in oss:
         # for level in levels:
             # fit_polynomial(order,level,dick=dick,sparse = True)
             # print('Job_complete')
             
-    plotter('gaussian')
+    
             
             
             
