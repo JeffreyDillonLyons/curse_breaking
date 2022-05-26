@@ -118,9 +118,10 @@ def run_sobol(model_file, working_directory, parameter_names, resolution, dimens
     s2 = s2.set_index(['params'])
     s2.to_csv(f"./data/sobol/sobol_s2_{dimension}_{resolution}.csv")
 
+    Si.pop('S2')
+    Si.pop('S2_conf')
     df = pd.DataFrame.from_dict(Si)
     df.to_csv(f"./data/sobol/sobol_{dimension}_{resolution}.csv")
-    print(Si)
     
     save_results(results, fr'./data/sobol/runfile_{dimension}_{resolution}.tar.gz')
 
@@ -477,18 +478,18 @@ if __name__ == "__main__":
     
     #5 dimensions - 24,576 experiments
     run_sobol(
-        model_filename, working_directory, parameter_names, resolution=2048, dimension=5
+        model_filename, working_directory, parameter_names, resolution=2, dimension=2
     )
     
-    # 8 dimensions - 36,864 experiments
-    run_sobol(
-        model_filename, working_directory, parameter_names, resolution=2048, dimension=8
-    )
+    # # 8 dimensions - 36,864 experiments
+    # run_sobol(
+        # model_filename, working_directory, parameter_names, resolution=2048, dimension=8
+    # )
     
-    # 10 dimensions - 45,056 experiments
-    run_sobol(
-        model_filename, working_directory, parameter_names, resolution=2048, dimension=10
-    )
+    # # 10 dimensions - 45,056 experiments
+    # run_sobol(
+        # model_filename, working_directory, parameter_names, resolution=2048, dimension=10
+    # )
     
     
     
