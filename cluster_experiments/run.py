@@ -23,7 +23,8 @@ from ema_workbench import (
     RealParameter,
     ScalarOutcome,
     Scenario,
-    Samplers
+    Samplers,
+    save_results
 )
 
 from ema_workbench.em_framework import SobolSampler, get_SALib_problem
