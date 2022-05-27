@@ -23,7 +23,8 @@ from ema_workbench import (
     RealParameter,
     ScalarOutcome,
     Scenario,
-    Samplers
+    Samplers,
+    save_results
 )
 
 from ema_workbench.em_framework import SobolSampler, get_SALib_problem
@@ -117,10 +118,12 @@ def run_sobol(model_file, working_directory, parameter_names, resolution, dimens
     
     s2 = s2.set_index(['params'])
     s2.to_csv(f"./data/sobol/sobol_s2_{dimension}_{resolution}.csv")
-
+    
+    Si.pop('S2')
+    Si.pop('S2_conf')
     df = pd.DataFrame.from_dict(Si)
     df.to_csv(f"./data/sobol/sobol_{dimension}_{resolution}.csv")
-    print(Si)
+    
     
     save_results(results, fr'./data/sobol/runfile_{dimension}_{resolution}.tar.gz')
 
