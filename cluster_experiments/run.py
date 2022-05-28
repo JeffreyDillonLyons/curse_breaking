@@ -123,6 +123,7 @@ def run_sobol(model_file, working_directory, parameter_names, resolution, dimens
     Si.pop('S2_conf')
     df = pd.DataFrame.from_dict(Si)
     df.to_csv(f"./data/sobol/sobol_{dimension}_{resolution}.csv")
+
     
     save_results(results, fr'./data/sobol/runfile_{dimension}_{resolution}.tar.gz')
 
