@@ -169,15 +169,15 @@ def generate_candidates(index_set, P):
         if np.all([neighbour in old for neighbour in back_neighbours]):
             candidates.append(tuple(candidate))
 
-    temp = []
-    for candidate in candidates:
-        # if candidate not in old:
+    # temp = []
+    # for candidate in candidates:
+        # # if candidate not in old:
 
-         if np.all(np.array(candidate) <= P):# and np.linalg.norm(np.array(candidate),ord=1) <= (P+6):
+         # if np.all(np.array(candidate) <= P) and np.linalg.norm(np.array(candidate),ord=1) <= (P+6):
 
-            temp.append(candidate)
+            # temp.append(candidate)
 
-    candidates = temp
+    # candidates = temp
     
     for candidate in candidates:
         if candidate in old:
@@ -391,9 +391,8 @@ def algorithm(P, species, TOL, merge):
         """Save data"""
         run_time = time.perf_counter() - start_time
 
-        
-        numpoly.savez(f'../data/lotka3/{species}/poly_{P}+{date_today}.npz',*poly)
-        np.savez(f'../data/lotka3/{species}/uhat_{P}+{date_today}.npz',*uhats)
+        numpoly.savez(f'../data/lotka3/{species}/poly/poly_{P}+{date_today}.npz',*poly)
+        np.savez(f'../data/lotka3/{species}/poly/uhat_{P}+{date_today}.npz',*uhats)
         
         df_indices = df_indices.append({'alpha': st[0], 'beta': st[1], 'delta': st[2], 'gamma': st[3], 'e': st[4], 'f':st[5],'h':st[6]}, ignore_index=True)
         df_indices_s1 = df_indices_s1.append({'alpha': st[0], 'beta': st[1], 'delta': st[2], 'gamma': st[3], 'e': st[4], 'f':st[5],'h':st[6]}, ignore_index=True)
@@ -441,9 +440,9 @@ def algorithm(P, species, TOL, merge):
         '''Save data'''
         run_time = time.perf_counter() - start_time
      
-        numpoly.savez(f'../data/lotka3/{species}/poly_{P}+{date_today}.npz',*poly)
+        numpoly.savez(f'../data/lotka3/{species}/poly/poly_{P}+{date_today}.npz',*poly)
         
-        np.savez(f'../data/lotka3/{species}/uhat_{P}+{date_today}.npz',*uhats)
+        np.savez(f'../data/lotka3/{species}/poly/uhat_{P}+{date_today}.npz',*uhats)
         
         df_indices = df_indices.append({'alpha': st[0], 'beta': st[1], 'delta': st[2], 'gamma': st[3], 'e': st[4], 'f':st[5],'h':st[6]}, ignore_index=True)
         df_indices_s1 = df_indices_s1.append({'alpha': st[0], 'beta': st[1], 'delta': st[2], 'gamma': st[3], 'e': st[4], 'f':st[5],'h':st[6]}, ignore_index=True)
