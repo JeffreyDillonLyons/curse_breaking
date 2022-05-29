@@ -169,29 +169,29 @@ def generate_candidates(index_set, P):
         if np.all([neighbour in old for neighbour in back_neighbours]):
             candidates.append(tuple(candidate))
 
-    # temp = []
-    # for candidate in candidates:
-        # # if candidate not in old:
+    temp = []
+    for candidate in candidates:
+        # if candidate not in old:
 
-         # if np.all(np.array(candidate) <= P) and np.linalg.norm(np.array(candidate),ord=1) <= (P+6):
+         if np.all(np.array(candidate) <= P):# and np.linalg.norm(np.array(candidate),ord=1) <= (P+6):
 
-            # temp.append(candidate)
+            temp.append(candidate)
 
-    # candidates = temp
+    candidates = temp
     
     for candidate in candidates:
         if candidate in old:
             candidates.remove(candidate)
 
-    # temp = []
-    # maxx = sum(np.max(np.array(old), axis=0))
+    temp = []
+    maxx = sum(np.max(np.array(old), axis=0))
 
-    # for candidate in candidates:
+    for candidate in candidates:
 
-        # if sum(np.max(np.array(old + [candidate]), axis=0)) > maxx:
-            # temp.append(candidate)
+        if sum(np.max(np.array(old + [candidate]), axis=0)) > maxx:
+            temp.append(candidate)
 
-    # candidates = temp
+    candidates = temp
 
     return candidates
 
@@ -311,12 +311,13 @@ def algorithm(P, species, TOL, merge):
     vectors = np.identity(len(joint), dtype='int')
 
     date_today = datetime.date.today()
+    
     start_time = time.perf_counter()
 
     step = 0
 
     
-    old = [tuple(np.zeros(len(joint),dtype='int'))]
+    old = [tuple(np.ones(len(joint),dtype='int'))]
     active = []
     poly = []
     uhats = []
@@ -391,6 +392,7 @@ def algorithm(P, species, TOL, merge):
         """Save data"""
         run_time = time.perf_counter() - start_time
 
+        
         numpoly.savez(f'../data/lotka3/{species}/poly/poly_{P}+{date_today}.npz',*poly)
         np.savez(f'../data/lotka3/{species}/poly/uhat_{P}+{date_today}.npz',*uhats)
         
@@ -538,4 +540,6 @@ def sense_t(uhat,exponents,expansion):
     
     return st
 
+algorithm(2,'owl',0.2, merge=True)
 algorithm(3,'owl',0.2, merge=True)
+
