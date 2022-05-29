@@ -240,6 +240,7 @@ def assign_errors(active_set):
     for multi_index in active_set:
         nodes, _ = build_nodes_weights(multi_index)
         current_errors = []
+        transport = []
 
         for node in nodes:
             if np.isnan(poly[-1](*node)):
@@ -252,7 +253,28 @@ def assign_errors(active_set):
                 current_errors.append(abs(dick[node] - poly_eval))
 
             else:
-                print('Node not found')
+                transport.append(node)
+                
+        if len(transport) > 0:  
+            scenarios = [
+            Scenario(name=None, **{k: v for k, v in zip(current_names, node)})
+            for node in transport
+                        ]
+        
+            with MultiprocessingEvaluator(model, n_processes=10) as evaluator:
+                results = evaluator.perform_experiments(scenarios)
+        
+            experiments, outcomes = results
+        
+            trans_nodes = np.array(experiments[current_names])
+        
+            for node, outcome in zip(trans_nodes, outcomes["fraction renewables"]):
+
+                dick[tuple(node)] = outcome
+                poly_eval = poly[-1](*node)
+                current_errors.append(abs(outcome - poly_eval))
+                
+        
 
 
                 # current_errors.append(abs(solution - poly_eval))
@@ -291,27 +313,28 @@ def algorithm(P, dimension, joint_distribution,model, TOL, merge, parameter_name
     poly = []
     uhats = []
     
-    local_errors = []
-    global_errors = []
+    local_errors = [0]
+    global_errors = [0]
     means = []
     
-    names = parameter_names[0:dimension]
+    current_names = parameter_names[0:dimension]
     
     df = pd.DataFrame(columns=['chosen_index','local_error','global_error','no_nodes','run_time'])
-    df_indices = pd.DataFrame(columns=names,dtype=object)
-    df_indices_s1 = pd.DataFrame(columns=names,dtype=object)
+    df_indices = pd.DataFrame(columns=current_names,dtype=object)
+    df_indices_s1 = pd.DataFrame(columns=current_names,dtype=object)
 
     
     '''Execute zeroth step'''
     
-    # trivial = [seed]
-    number_nodes,uhat = solver(old,expansion)
+    number_nodes,uhat = solver(old,expansion,current_names)
     uhats.append(uhat)
     assign_errors(old)
     
     st = sense_t(uhat,exponents,expansion)
     s1 = sense_main(uhat,exponents,expansion)
     means.append(uhat[0])
+    chosen_index = old[0]
+    run_time = 0
     
 
     global_errors.append(sobol_error(st))
@@ -319,6 +342,17 @@ def algorithm(P, dimension, joint_distribution,model, TOL, merge, parameter_name
     print("Global error >>>", global_errors[-1])
     print("Step time >>>", time.perf_counter() - start_time, "seconds")
     print("-" * 10, "break", "-" * 10)
+    
+    numpoly.savez(f'../data/dimension_{dimension}/poly/poly_{P}+{date_today}.npz',*poly)
+    np.savez(f'../data/dimension_{dimension}/poly/uhat_{P}+{date_today}.npz',*uhats)
+        
+    df_indices = df_indices.append({k:v for k,v in zip(current_names,st)}, ignore_index=True)
+    df_indices_s1 = df_indices_s1.append({k:v for k,v in zip(current_names,s1)}, ignore_index=True)
+    df = df.append({'chosen_index': chosen_index,'local_error':local_errors[-1],                               'global_error':global_errors[-1],'no_nodes':number_nodes, 'run_time':run_time}, ignore_index=True)
+        
+    df.to_csv(f'../data/dimension_{dimension}/indices/run_file_{P}+{date_today}.csv')
+    df_indices.to_csv(f'../data/dimension_{dimension}/indices/total_order_indices_{P}+{date_today}.csv')
+    df_indices_s1.to_csv(f'../data/dimension_{dimension}/indices/first_order_indices_{P}+{date_today}.csv')
 
   
     '''Main loop'''
@@ -338,7 +372,7 @@ def algorithm(P, dimension, joint_distribution,model, TOL, merge, parameter_name
         
         print('Chosen index >>>', chosen_index)
         
-        number_nodes,uhat = solver(old,expansion)
+        number_nodes,uhat = solver(old,expansion,current_names)
         uhats.append(uhat)
         
         candidates = generate_candidates(chosen_index,P)
@@ -365,8 +399,8 @@ def algorithm(P, dimension, joint_distribution,model, TOL, merge, parameter_name
         numpoly.savez(f'../data/dimension_{dimension}/poly/poly_{P}+{date_today}.npz',*poly)
         np.savez(f'../data/dimension_{dimension}/poly/uhat_{P}+{date_today}.npz',*uhats)
         
-        df_indices = df_indices.append({'alpha': st[0], 'beta': st[1], 'delta': st[2], 'gamma': st[3], 'e': st[4], 'f':st[5],'h':st[6]}, ignore_index=True)
-        df_indices_s1 = df_indices_s1.append({'alpha': st[0], 'beta': st[1], 'delta': st[2], 'gamma': st[3], 'e': st[4], 'f':st[5],'h':st[6]}, ignore_index=True)
+        df_indices = df_indices.append({k:v for k,v in zip(current_names,st)}, ignore_index=True)
+        df_indices_s1 = df_indices_s1.append({k:v for k,v in zip(current_names,s1)}, ignore_index=True)
         df = df.append({'chosen_index': chosen_index,'local_error':local_errors[-1],                               'global_error':global_errors[-1],'no_nodes':number_nodes, 'run_time':run_time}, ignore_index=True)
         
         df.to_csv(f'../data/dimension_{dimension}/indices/run_file_{P}+{date_today}.csv')
@@ -384,8 +418,8 @@ def algorithm(P, dimension, joint_distribution,model, TOL, merge, parameter_name
     # print(f'ST_alpha:{st[0].round(4)}, ST_beta:{st[1].round(4)}, ST_delta:{st[2].round(4)},\
             # ST_gamma:{st[3].round(4)}, ST_e:{st[4].round(4)}, ST_f:{st[5].round(4)}, ST_h:{st[6].round(4)}') 
 
-    print([i for i in zip(names,gt)])
-    print([i for i in zip(names,st)])
+    print([i for i in zip(current_names,gt)])
+    print([i for i in zip(current_names,st)])
               
     # print(f'GT_alpha:{gt[0].round(4)}, GT_beta:{gt[1].round(4)}, GT_delta:{gt[2].round(4)}, GT_gamma:{gt[3].round(4)}, GT_e:{gt[4].round(4)}, GT_f:{gt[5].round(4)}, GT_h:{gt[6].round(4)} ')
     print(f'The final grid contains {number_nodes} nodes.')
@@ -634,13 +668,13 @@ if __name__ == "__main__":
     dick = {}
     x_lookup, w_lookup = construct_wrapper(10,joint_distribution)
     
-    old = [np.ones(len(joint_distribution),dtype='int')]
-    expansion = ch.generate_expansion(expansion_order, joint_distribution, normed = True)
-    current_names = parameter_names[0:dimension]
+    # old = [np.ones(len(joint_distribution),dtype='int')]
+    # expansion = ch.generate_expansion(expansion_order, joint_distribution, normed = True)
+    # current_names = parameter_names[0:dimension]
     
-    number,uhat = solver(old,expansion,current_names)
+    # number,uhat = solver(old,expansion,current_names)
     
     
-    # algorithm(expansion_order, dimension, joint_distribution, model, 0.2, merge,parameter_names)
+    algorithm(expansion_order, dimension, joint_distribution, model, 0.2, merge,parameter_names)
     
 

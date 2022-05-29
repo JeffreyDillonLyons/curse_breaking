@@ -173,25 +173,13 @@ def generate_candidates(index_set, P):
     for candidate in candidates:
         # if candidate not in old:
 
-         if np.all(np.array(candidate) <= P):# and np.linalg.norm(np.array(candidate),ord=1) <= (P+6):
+         if np.all(np.array(candidate) <= P) and np.linalg.norm(np.array(candidate),ord=1) <= (P+6):
 
             temp.append(candidate)
 
     candidates = temp
     
-    for candidate in candidates:
-        if candidate in old:
-            candidates.remove(candidate)
-
-    temp = []
-    maxx = sum(np.max(np.array(old), axis=0))
-
-    for candidate in candidates:
-
-        if sum(np.max(np.array(old + [candidate]), axis=0)) > maxx:
-            temp.append(candidate)
-
-    candidates = temp
+    
 
     return candidates
 
@@ -539,7 +527,7 @@ def sense_t(uhat,exponents,expansion):
     st = st / variance
     
     return st
-
-algorithm(2,'owl',0.2, merge=True)
-algorithm(3,'owl',0.2, merge=True)
+# algorithm(1,'snake',0.2, merge=True)
+# algorithm(2,'snake',0.2, merge=True)
+algorithm(3,'snake',0.2, merge=True)
 
