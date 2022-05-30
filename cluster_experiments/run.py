@@ -480,18 +480,18 @@ if __name__ == "__main__":
     
     #5 dimensions - 24,576 experiments
     run_sobol(
-        model_filename, working_directory, parameter_names, resolution=2, dimension=2
+        model_filename, working_directory, parameter_names, resolution=2048, dimension=2
     )
     
-    # # 8 dimensions - 36,864 experiments
-    # run_sobol(
-        # model_filename, working_directory, parameter_names, resolution=2048, dimension=8
-    # )
+    # 8 dimensions - 36,864 experiments
+    run_sobol(
+        model_filename, working_directory, parameter_names, resolution=2048, dimension=8
+    )
     
-    # # 10 dimensions - 45,056 experiments
-    # run_sobol(
-        # model_filename, working_directory, parameter_names, resolution=2048, dimension=10
-    # )
+    # 10 dimensions - 45,056 experiments
+    run_sobol(
+        model_filename, working_directory, parameter_names, resolution=2048, dimension=10
+    )
     
     
     
